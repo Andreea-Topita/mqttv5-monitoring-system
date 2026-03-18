@@ -18,7 +18,7 @@ class PacketBuilder:
         
         #sa expire la un nr de secunde ; sa trimita un nou pachet ;
         #repornirea time 
-        packet.extend(int(keep_alive).to_bytes(2, 'big'))  #Keep Alive: 10 sec(2 octeți, big-endian)
+        packet.extend(int(keep_alive).to_bytes(2, 'big'))  #Keep Alive: 10 sec(2 octeti, big-endian)
 
         #PROPERTIES
         packet.extend(b'\x00')
@@ -104,41 +104,23 @@ class PacketBuilder:
         #FIXED HEADER 
         packet.append(0x40)  # 0100 0000, byte 1
         
-        #Remaining Length
-        remaining_length = 2  #doar 2 bytes(packet_id + reason_code)
-        
         #VARIABLE HEADER
-        #packet identifier from the PUBLISH packet that is being acknowledged
-        packet.append(reason_code)
-        
-        # Properties 
-        if properties:
-            prop_length = len(properties)
-            packet.append(prop_length)  
-            packet.extend(properties)  #datele propr
-            remaining_length += prop_length + 1     #lung propr+1 pentru lungimea datelor
-
-        
-        #Remaining Length
-        packet[1:2] = remaining_length.to_bytes(1, 'big')
+        vh = bytearray()
 
         #adaugam Packet ID-ul din PUBLISH
-        packet.extend(packet_id.to_bytes(2, 'big'))
-
-        #Variable header parts
-        vh = bytearray()
         vh.extend(packet_id.to_bytes(2, 'big'))
 
         #if you include reason code, you must also include properties length
+        #packet identifier from the PUBLISH packet that is being acknowledged
         vh.append(reason_code)
 
         if properties:
             vh.append(len(properties))  # Property Length
             vh.extend(properties)
         else:
-            vh.append(0x00) # Property Length = 0
+            vh.append(0x00)     # Property Length = 0
 
-        # Remaining Length
+        #Remaining Length
         packet.append(len(vh))
         packet.extend(vh)
         
