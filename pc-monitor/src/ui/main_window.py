@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import PhotoImage
 
-from src.services.monitor_service import MonitorService
+from src.api.services.monitor_service import MonitorService
 from src.ui.dialogs import show_error, show_info, show_warning
 from src.ui.publish_window import PublishWindow
 from src.ui.subscribe_window import SubscribeWindow

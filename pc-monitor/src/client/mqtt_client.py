@@ -115,7 +115,7 @@ class MQTTClient:
                     #trimite pubrel
                     pubrec_id = (packet[2] << 8) | packet[3]   # Packet Identifier din PUBREC
 
-                    pubrel_packet = self.encoder.PUBREL(self.packet_id)
+                    pubrel_packet = self.encoder.PUBREL(pubrec_id)
                     self.socket.sendall(pubrel_packet)
                     print("PUBREL trimis.\n")
                     continue
@@ -203,7 +203,9 @@ class MQTTClient:
                 #pt mentinerea conexiunii mqtt si ar trb sa ruleze cat timp conexiunea este activa
 
         except Exception as e:
-            print(f"Eroare la conectarea la broker:{e}")
+            self.connected = False
+            print(f"Eroare la conectarea la broker: {e}")
+            raise
 
 
     def username_pw_set(self, username, password):
