@@ -1,0 +1,76 @@
+<div class="page">
+  <div class="header">
+    <div>
+      <h1>MQTT Dashboard</h1>
+      <p>Status conexiune: <strong>{{ status.connected ? 'CONNECTED' : 'DISCONNECTED' }}</strong></p>
+      <p>Periodic publishing: <strong>{{ status.periodic_publishing ? 'ON' : 'OFF' }}</strong></p>
+    </div>
+
+    <button class="disconnect-btn" (click)="disconnect()">Disconnect</button>
+  </div>
+
+  <p class="info" *ngIf="infoMessage">{{ infoMessage }}</p>
+  <p class="error" *ngIf="errorMessage">{{ errorMessage }}</p>
+
+  <div class="grid">
+    <section class="card">
+      <h2>Publish</h2>
+
+      <label>Topic</label>
+      <select [(ngModel)]="publishTopic">
+        <option *ngFor="let topic of topics" [value]="topic">{{ topic }}</option>
+      </select>
+
+      <label>QoS</label>
+      <select [(ngModel)]="publishQos">
+        <option [ngValue]="0">0</option>
+        <option [ngValue]="1">1</option>
+        <option [ngValue]="2">2</option>
+      </select>
+
+      <label>Periodic interval (secunde)</label>
+      <input type="number" [(ngModel)]="periodicInterval" />
+
+      <div class="button-row">
+        <button (click)="publishMetric()">Publish</button>
+        <button (click)="startPeriodicPublishing()">Start Periodic</button>
+        <button (click)="stopPeriodicPublishing()">Stop Periodic</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Subscribe</h2>
+
+      <label>Topic</label>
+      <select [(ngModel)]="subscribeTopic">
+        <option *ngFor="let topic of topics" [value]="topic">{{ topic }}</option>
+      </select>
+
+      <label>QoS</label>
+      <select [(ngModel)]="subscribeQos">
+        <option [ngValue]="0">0</option>
+        <option [ngValue]="1">1</option>
+        <option [ngValue]="2">2</option>
+      </select>
+
+      <p>Status: <strong>{{ getSubscriptionStatus() }}</strong></p>
+
+      <div class="button-row">
+        <button (click)="subscribeToTopic()">Subscribe</button>
+        <button (click)="unsubscribeFromTopic()">Unsubscribe</button>
+      </div>
+    </section>
+  </div>
+
+  <section class="card messages-card">
+    <h2>Mesaje primite</h2>
+    <p *ngIf="!activeMessageTopic">Nu ai un topic activ pentru afisare.</p>
+    <p *ngIf="activeMessageTopic">Topic activ: <strong>{{ activeMessageTopic }}</strong></p>
+
+    <div class="messages-box">
+      <div *ngFor="let msg of messages" class="message-item">
+        [{{ msg.topic }}] {{ msg.message }}
+      </div>
+    </div>
+  </section>
+</div>

@@ -11,7 +11,7 @@ class MonitorService:
         self.client = None
         self.connected = False
         self.periodic_publishing = False
-        self.on_message_callback = on_message_callback
+        self.external_on_message_callback = on_message_callback
         
         # mesaje primite de la broker
         self.received_messages = []
@@ -117,6 +117,7 @@ class MonitorService:
     def stop_periodic_publish(self):
         self.periodic_publishing = False
 
+    # pentru UI, sa vedem ce mesaje am primit de la broker
     def get_messages(self, topic: Optional[str] = None, after_id: Optional[int] = None):
         with self.lock:
             messages = list(self.received_messages)

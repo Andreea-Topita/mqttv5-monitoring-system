@@ -1,0 +1,58 @@
+<div class="page">
+  <div class="card">
+    <h1>MQTT v5 Monitor</h1>
+    <p>Conectare la broker</p>
+
+    <div class="form-grid">
+      <div>
+        <label>Broker address</label>
+        <input [(ngModel)]="form.broker_address" />
+      </div>
+
+      <div>
+        <label>Broker port</label>
+        <input type="number" [(ngModel)]="form.broker_port" />
+      </div>
+
+      <div>
+        <label>Client ID</label>
+        <input [(ngModel)]="form.client_id" />
+      </div>
+
+      <div>
+        <label>Username</label>
+        <input [(ngModel)]="form.username" />
+      </div>
+
+      <div>
+        <label>Password</label>
+        <input type="password" [(ngModel)]="form.password" />
+      </div>
+
+      <div>
+        <label>Last Will Topic</label>
+        <input [(ngModel)]="form.last_will_topic" />
+      </div>
+
+      <div class="full">
+        <label>Last Will Message</label>
+        <input [(ngModel)]="form.last_will_message" />
+      </div>
+
+      <div>
+        <label>Last Will QoS</label>
+        <select [(ngModel)]="form.last_will_qos">
+          <option [ngValue]="0">0</option>
+          <option [ngValue]="1">1</option>
+          <option [ngValue]="2">2</option>
+        </select>
+      </div>
+    </div>
+
+    <button (click)="connect()" [disabled]="loading">
+      {{ loading ? 'Connecting...' : 'Connect' }}
+    </button>
+
+    <p class="error" *ngIf="errorMessage">{{ errorMessage }}</p>
+  </div>
+</div>
