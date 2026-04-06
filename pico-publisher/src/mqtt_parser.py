@@ -1,0 +1,106 @@
+class MQTTPacketParser:
+    TYPE_CONNACK = 2
+    TYPE_PUBLISH = 3
+    TYPE_PUBACK = 4
+    TYPE_PUBREC = 5
+    TYPE_PUBREL = 6
+    TYPE_PUBCOMP = 7
+    TYPE_SUBACK = 9
+    TYPE_PINGRESP = 13
+    TYPE_DISCONNECT = 14
+
+    #raspunsurile brokerului
+    def _read_exact(self, sock, size: int) -> bytes:
+        data = bytearray()
+
+        while len(data) < size:
+            chunk = sock.recv(size - len(data))
+            if not chunk:
+                raise OSError("Socket closed by broker")
+            data.extend(chunk)
+
+        return bytes(data)
+
+    def _read_varint(self, sock) -> int:
+        multiplier = 1
+        value = 0
+
+        while True:
+            encoded_byte = self._read_exact(sock, 1)[0]
+            value += (encoded_byte & 0x7F) * multiplier
+
+            if (encoded_byte & 0x80) == 0:
+                break
+
+            multiplier *= 128
+            if multiplier > 128 * 128 * 128:
+                raise ValueError("Malformed Remaining Length")
+
+        return value
+
+    def read_packet(self, sock) -> dict:
+        first_byte = self._read_exact(sock, 1)[0]
+        packet_type = first_byte >> 4
+        flags = first_byte & 0x0F
+
+        remaining_length = self._read_varint(sock)
+        body = self._read_exact(sock, remaining_length)
+
+        return {
+            "type": packet_type,
+            "flags": flags,
+            "remaining_length": remaining_length,
+            "body": body,
+        }
+
+    def parse_connack(self, packet: dict) -> dict:
+        if packet["type"] != self.TYPE_CONNACK:
+            raise ValueError("Expected CONNACK")
+
+        body = packet["body"]
+        if len(body) < 3:
+            raise ValueError("Invalid CONNACK")
+
+        session_present = body[0] & 0x01
+        reason_code = body[1]
+
+        return {
+            "session_present": session_present,
+            "reason_code": reason_code,
+        }
+
+    def parse_ack(self, packet: dict, expected_type: int) -> dict:
+        if packet["type"] != expected_type:
+            raise ValueError("Unexpected packet type")
+
+        body = packet["body"]
+        if len(body) < 2:
+            raise ValueError("Invalid ACK packet")
+
+        packet_id = int.from_bytes(body[0:2], "big")
+        reason_code = body[2] if len(body) >= 3 else 0x00
+
+        return {
+            "packet_id": packet_id,
+            "reason_code": reason_code,
+        }
+
+    def parse_pingresp(self, packet: dict) -> bool:
+        if packet["type"] != self.TYPE_PINGRESP:
+            raise ValueError("Expected PINGRESP")
+
+        if packet["remaining_length"] != 0:
+            raise ValueError("Invalid PINGRESP")
+
+        return True
+
+    def parse_disconnect(self, packet: dict) -> dict:
+        if packet["type"] != self.TYPE_DISCONNECT:
+            raise ValueError("Expected DISCONNECT")
+
+        body = packet["body"]
+        reason_code = body[0] if len(body) >= 1 else 0x00
+
+        return {
+            "reason_code": reason_code,
+        }
