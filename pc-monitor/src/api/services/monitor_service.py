@@ -3,7 +3,6 @@ import time
 from typing import Optional
 
 from src.client.mqtt_client import MQTTClient
-from src.monitoring.system_metrics import get_system_metric
 
 
 class MonitorService:
@@ -68,13 +67,11 @@ class MonitorService:
             self.connected = False
             self.periodic_publishing = False
 
-    def publish_metric(self, topic: str, qos: int):
+    def publish_message(self, topic: str, message: str, qos: int):
         if not self.client or not self.connected:
             raise RuntimeError("Not connected to broker.")
 
-        message = get_system_metric(topic)
         self.client.publish(topic, message, qos)
-        return message
 
     def subscribe(self, topic: str, qos: int):
         if not self.client or not self.connected:
@@ -95,21 +92,21 @@ class MonitorService:
             if topic in self.subscriptions:
                 del self.subscriptions[topic]
 
-    def start_periodic_publish(self, topic: str, qos: int, interval: int = 5):
+    def start_periodic_publish(self, topic: str, message: str, qos: int, interval: int = 5):
         if not self.connected:
             raise RuntimeError("Not connected to broker.")
 
         self.periodic_publishing = True
         threading.Thread(
             target=self._publish_periodically,
-            args=(topic, qos, interval),
+            args=(topic, message, qos, interval),
             daemon=True
         ).start()
 
-    def _publish_periodically(self, topic: str, qos: int, interval: int):
+    def _publish_periodically(self, topic: str, message: str, qos: int, interval: int):
         while self.periodic_publishing:
             try:
-                self.publish_metric(topic, qos)
+                self.publish_message(topic, message, qos)
             except Exception as e:
                 print(f"Periodic publish error: {e}")
             time.sleep(interval)

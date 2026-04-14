@@ -17,7 +17,11 @@ import {
   styleUrl: './dashboard.component.css'
 })
 export class DashboardComponent implements OnInit, OnDestroy {
-  topics = ['Cpu load', 'Memory usage', 'Disk usage'];
+  topics = [
+    'licenta/pico/status',
+    'licenta/pico/temperatura',
+    'licenta/pico/umiditate'
+  ];
 
   status: StatusResponse = {
     connected: false,
@@ -25,19 +29,25 @@ export class DashboardComponent implements OnInit, OnDestroy {
     subscriptions: {}
   };
 
-  publishTopic = 'Cpu load';
+  publishTopic = 'licenta/pc/test';
+  publishMessage = 'mesaj test de pe pc';
   publishQos = 0;
   periodicInterval = 5;
 
-  subscribeTopic = 'Cpu load';
+  subscribeTopic = 'licenta/pico/temperatura';
   subscribeQos = 0;
 
   activeMessageTopic = '';
   messages: MessageItem[] = [];
   lastMessageId = 0;
 
+  latestStatus = '-';
+  latestTemperature = '-';
+  latestHumidity = '-';
+
   infoMessage = '';
   errorMessage = '';
+
 
   private pollingId: number | null = null;
 
@@ -56,6 +66,23 @@ export class DashboardComponent implements OnInit, OnDestroy {
       clearInterval(this.pollingId);
     }
   }
+
+  updateLatestValues(newMessages: MessageItem[]) {
+    for (const msg of newMessages) {
+      if (msg.topic === 'licenta/pico/status') {
+        this.latestStatus = msg.message;
+      }
+
+      if (msg.topic === 'licenta/pico/temperatura') {
+        this.latestTemperature = msg.message;
+      }
+
+      if (msg.topic === 'licenta/pico/umiditate') {
+        this.latestHumidity = msg.message;
+      }
+    }
+  }
+
 
   startPolling() {
     this.pollingId = window.setInterval(() => {
@@ -177,17 +204,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
+  //toate mesajele noi, indiferent de topic sunt incarcate, nu doar cele de la topicul activ
   loadMessages() {
-    this.api.getMessages(this.activeMessageTopic, this.lastMessageId).subscribe({
+    this.api.getMessages(undefined, this.lastMessageId).subscribe({
       next: (res: { success: boolean; messages: MessageItem[] }) => {
         if (res.messages.length > 0) {
           this.messages = [...this.messages, ...res.messages];
           this.lastMessageId = res.messages[res.messages.length - 1].id;
+          this.updateLatestValues(res.messages);
         }
       }
     });
   }
-
+  
   getSubscriptionStatus(): string {
     const qos = this.status.subscriptions[this.subscribeTopic];
 
