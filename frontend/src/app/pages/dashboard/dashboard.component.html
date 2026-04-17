@@ -21,6 +21,9 @@
         <option *ngFor="let topic of topics" [value]="topic">{{ topic }}</option>
       </select>
 
+      <label>Mesaj</label>
+      <input type="text" [(ngModel)]="publishMessage" />
+
       <label>QoS</label>
       <select [(ngModel)]="publishQos">
         <option [ngValue]="0">0</option>
@@ -32,11 +35,11 @@
       <input type="number" [(ngModel)]="periodicInterval" />
 
       <div class="button-row">
-        <button (click)="publishMetric()">Publish</button>
+        <button (click)="publishMessageNow()">Publish</button>
         <button (click)="startPeriodicPublishing()">Start Periodic</button>
         <button (click)="stopPeriodicPublishing()">Stop Periodic</button>
       </div>
-    </section>
+  </section>
 
     <section class="card">
       <h2>Subscribe</h2>

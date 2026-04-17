@@ -22,13 +22,15 @@ export interface UnsubscribeRequest {
   topic: string;
 }
 
-export interface PublishMetricRequest {
+export interface PublishMessageRequest {
   topic: string;
+  message: string;
   qos: number;
 }
 
 export interface PeriodicPublishRequest {
   topic: string;
+  message: string;
   qos: number;
   interval: number;
 }
