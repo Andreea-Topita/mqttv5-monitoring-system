@@ -65,15 +65,22 @@
     </section>
   </div>
 
+
+  <section class="card">
+    <h2>Date live de la Pico</h2>
+
+    <p>Status Pico: <strong>{{ latestStatus }}</strong></p>
+    <p>Temperatura: <strong>{{ latestTemperature }}</strong></p>
+    <p>Umiditate: <strong>{{ latestHumidity }}</strong></p>
+  </section>
+
   <section class="card messages-card">
     <h2>Mesaje primite</h2>
     <p *ngIf="!activeMessageTopic">Nu ai un topic activ pentru afisare.</p>
     <p *ngIf="activeMessageTopic">Topic activ: <strong>{{ activeMessageTopic }}</strong></p>
 
-    <div class="messages-box">
-      <div *ngFor="let msg of messages" class="message-item">
-        [{{ msg.topic }}] {{ msg.message }}
-      </div>
+    <div *ngFor="let msg of displayedMessages" class="message-item">
+      [{{ msg.topic }}] {{ msg.message }}
     </div>
   </section>
 </div>

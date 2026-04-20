@@ -1,19 +1,22 @@
 from fastapi import APIRouter, HTTPException
 
-from src.api.schemas.publish import PublishMetricRequest, PeriodicPublishRequest
+from src.api.schemas.publish import PublishMessageRequest, PeriodicPublishRequest
 from src.api.services.monitor_instance import monitor_service
 
 router = APIRouter(prefix="/api/publishing", tags=["publishing"])
 
 
-@router.post("/publish-metric")
-def publish_metric(payload: PublishMetricRequest):
+@router.post("/publish-message")
+def publish_message(payload: PublishMessageRequest):
     try:
-        message = monitor_service.publish_metric(payload.topic, payload.qos)
+        monitor_service.publish_message(
+            topic=payload.topic,
+            message=payload.message,
+            qos=payload.qos
+        )
         return {
             "success": True,
-            "message": "Metric published successfully.",
-            "published_value": message
+            "message": "Message published successfully."
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -24,6 +27,7 @@ def start_periodic(payload: PeriodicPublishRequest):
     try:
         monitor_service.start_periodic_publish(
             topic=payload.topic,
+            message=payload.message,
             qos=payload.qos,
             interval=payload.interval
         )

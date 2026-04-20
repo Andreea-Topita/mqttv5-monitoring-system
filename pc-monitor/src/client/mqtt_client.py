@@ -34,11 +34,50 @@ class MQTTClient:
         
         self.on_message_callback = on_message_callback
         
+    def _decode_remaining_length(self, data, start_index=1):
+        multiplier = 1
+        value = 0
+        index = start_index
+
+        while True:
+            if index >= len(data):
+                return None, 0
+
+            encoded_byte = data[index]
+            value += (encoded_byte & 127) * multiplier
+            index += 1
+
+            if (encoded_byte & 128) == 0:
+                break
+
+            multiplier *= 128
+
+        return value, index - start_index
+
+
+    def _extract_complete_packet(self, buffer):
+        if len(buffer) < 2:
+            return None
+
+        remaining_length, rl_bytes_count = self._decode_remaining_length(buffer, 1)
+        if remaining_length is None:
+            return None
+
+        total_length = 1 + rl_bytes_count + remaining_length
+
+        if len(buffer) < total_length:
+            return None
+
+        packet = bytes(buffer[:total_length])
+        del buffer[:total_length]
+        return packet
+    
     #receptionarea pachetelor primite de la broker
     def receive_packet(self):
         def parse_publish_packet(packet, qos):
-            current_index = 2   #indexul de start pentru header-ul variabil
-
+            remaining_length, rl_bytes_count = self._decode_remaining_length(packet, 1)
+            current_index = 1 + rl_bytes_count
+            
             #topicul: lungimea + cont
             topic_length = (packet[current_index] << 8) | packet[current_index + 1]  #primii 2 octeti: lung topicului
             current_index += 2
@@ -59,113 +98,127 @@ class MQTTClient:
             return topic, message
         
         def extract_packet_id(packet):
+            remaining_length, rl_bytes_count = self._decode_remaining_length(packet, 1)
+            current_index = 1 + rl_bytes_count
+
             #Lungimea topicului (2 bytes)
-            topic_length = (packet[2] << 8) | packet[3]
+            topic_length = (packet[current_index] << 8) | packet[current_index + 1]
             
             #Indexul unde incepe Packet ID (dupa topic)
-            current_index = 4 + topic_length
+            current_index += 2 + topic_length
             
-            #Extrage Packet ID-ul (2 bytes,  Big Endian)
+            #Extrage Packet ID-ul (2 bytes, Big Endian)
             packet_id = (packet[current_index] << 8) | packet[current_index + 1]
             return packet_id
         
         
+        buffer = bytearray()
+
         while self.connected:
             #dimensiunea maxima a pachetului - 1024 
             #bufferul cu care am ales sa lucram
             try:
-                packet = self.socket.recv(1024)
-                if not packet:  
+                chunk = self.socket.recv(1024)
+
+                if not chunk:  
                     print("Conexiunea a fost intrerupta de broker.")
                     self.connected = False
                     break
 
-                print(f"Am primit pachet in hexa: {packet.hex()}")  #afis pachetul primit in format hex
-                
-                #CONNACK - raspuns la CONNECT
-                if self.decoder.CONNACK(packet):
-                    self.connected = True
-                    print("CONNACK primit.\n")
-                    continue
+                buffer.extend(chunk)
 
-                #SUBACK - raspuns la SUBSCRIBE
-                if self.decoder.SUBACK(packet):
-                    print("SUBACK primit.\n")
-                    #The SUBACK packet MUST have the same Packet Identifier as the SUBSCRIBE packet that it is acknowledging
-                    continue
+                while True:
+                    packet = self._extract_complete_packet(buffer)
 
-                if self.decoder.UNSUBACK(packet):
-                    print("UNSUBACK primit.\n")
-                    continue
+                    if packet is None:
+                        break
 
-                #PINGRESP - raspuns pentru PING
-                if self.decoder.PINGRESP(packet):
-                    print("PINGRESP primit. Brokerul este activ.\n")
-                    self.last_ping = time.time()
-                    continue
-
-                #PUBLISH QOS 1
-                if self.decoder.PUBACK(packet):
-                    print("PUBACK primit.\n")
-                    continue
-
-                #QOS 2
-                if self.decoder.PUBREC(packet):
-                    print("PUBREC primit.")
-                    #trimite pubrel
-                    pubrec_id = (packet[2] << 8) | packet[3]   # Packet Identifier din PUBREC
-
-                    pubrel_packet = self.encoder.PUBREL(pubrec_id)
-                    self.socket.sendall(pubrel_packet)
-                    print("PUBREL trimis.\n")
-                    continue
+                    print(f"Am primit pachet in hexa: {packet.hex()}")  #afis pachetul primit in format hex
                     
+                    #CONNACK - raspuns la CONNECT
+                    if self.decoder.CONNACK(packet):
+                        self.connected = True
+                        print("CONNACK primit.\n")
+                        continue
 
-                if self.decoder.PUBCOMP(packet):
-                    print("PUBCOMP primit.\n")
-                    self.packet_id+=1   # pt urmatorul pachet care va fi publicat
-                    continue 
+                    #SUBACK - raspuns la SUBSCRIBE
+                    if self.decoder.SUBACK(packet):
+                        print("SUBACK primit.\n")
+                        #The SUBACK packet MUST have the same Packet Identifier as the SUBSCRIBE packet that it is acknowledging
+                        continue
 
-                #QoS 2 (esti subscriber): dupa ce ai trimis PUBREC, brokerul trimite PUBREL
-                #raspunzi cu PUBCOMP (cu acelasi Packet ID)
-                if self.decoder.PUBREL(packet):
-                    print("PUBREL primit (QoS2 step 3).")
+                    if self.decoder.UNSUBACK(packet):
+                        print("UNSUBACK primit.\n")
+                        continue
 
-                    pubrel_id = (packet[2] << 8) | packet[3]   # Packet Identifier din PUBREL
-                    pubcomp_packet = self.encoder.PUBCOMP2(pubrel_id)
+                    #PINGRESP - raspuns pentru PING
+                    if self.decoder.PINGRESP(packet):
+                        print("PINGRESP primit. Brokerul este activ.\n")
+                        self.last_ping = time.time()
+                        continue
 
-                    self.socket.sendall(pubcomp_packet)
-                    print("PUBCOMP trimis (QoS2 step 4).\n")
-                    continue
+                    #PUBLISH QOS 1
+                    if self.decoder.PUBACK(packet):
+                        print("PUBACK primit.\n")
+                        continue
 
-                
-                #######PT MESAJE CU 2 CLIENTI
-                #PUBLISH (QoS 0/1/2) - detectat din header
-                if self.decoder.is_publish(packet):
-                    qos = self.decoder.publish_qos(packet)
-                    print(f"PUBLISH primit (QoS={qos})\n")
+                    #QOS 2
+                    if self.decoder.PUBREC(packet):
+                        print("PUBREC primit.")
+                        #trimite pubrel
+                        pubrec_id = (packet[2] << 8) | packet[3]   # Packet Identifier din PUBREC
 
-                    topic, message = parse_publish_packet(packet, qos)
+                        pubrel_packet = self.encoder.PUBREL(pubrec_id)
+                        self.socket.sendall(pubrel_packet)
+                        print("PUBREL trimis.\n")
+                        continue
+                        
 
-                    print(f"Topic: {topic}")
-                    print(f"Message: {message}")
+                    if self.decoder.PUBCOMP(packet):
+                        print("PUBCOMP primit.\n")
+                        self.packet_id += 1   # pt urmatorul pachet care va fi publicat
+                        continue 
 
-                    if self.on_message_callback:
-                        self.on_message_callback(topic, repr(message))
+                    #QoS 2 (esti subscriber): dupa ce ai trimis PUBREC, brokerul trimite PUBREL
+                    #raspunzi cu PUBCOMP (cu acelasi Packet ID)
+                    if self.decoder.PUBREL(packet):
+                        print("PUBREL primit (QoS2 step 3).")
 
-                    if qos == 1:
-                        packet_id = extract_packet_id(packet)
-                        puback_packet_ = self.encoder.PUBACK(packet_id)
-                        self.socket.sendall(puback_packet_)
-                        print("PUBACK trimis.\n")
+                        pubrel_id = (packet[2] << 8) | packet[3]   # Packet Identifier din PUBREL
+                        pubcomp_packet = self.encoder.PUBCOMP2(pubrel_id)
 
-                    elif qos == 2:
-                        packet_id = extract_packet_id(packet)
-                        pubrec_packet_ = self.encoder.PUBREC(packet_id)
-                        self.socket.sendall(pubrec_packet_)
-                        print("PUBREC trimis.\n")
+                        self.socket.sendall(pubcomp_packet)
+                        print("PUBCOMP trimis (QoS2 step 4).\n")
+                        continue
 
-                    continue
+                    
+                    #######PT MESAJE CU 2 CLIENTI
+                    #PUBLISH (QoS 0/1/2) - detectat din header
+                    if self.decoder.is_publish(packet):
+                        qos = self.decoder.publish_qos(packet)
+                        print(f"PUBLISH primit (QoS={qos})\n")
+
+                        topic, message = parse_publish_packet(packet, qos)
+
+                        print(f"Topic: {topic}")
+                        print(f"Message: {message}")
+
+                        if self.on_message_callback:
+                            self.on_message_callback(topic, message)
+
+                        if qos == 1:
+                            packet_id = extract_packet_id(packet)
+                            puback_packet_ = self.encoder.PUBACK(packet_id)
+                            self.socket.sendall(puback_packet_)
+                            print("PUBACK trimis.\n")
+
+                        elif qos == 2:
+                            packet_id = extract_packet_id(packet)
+                            pubrec_packet_ = self.encoder.PUBREC(packet_id)
+                            self.socket.sendall(pubrec_packet_)
+                            print("PUBREC trimis.\n")
+
+                        continue
                         
                 
             except Exception as e:
@@ -175,7 +228,7 @@ class MQTTClient:
                 print("\nNu s-a primit niciun pachet.Inchidere.")
                 break
 
-        print("Thread-ul pentru receptie s-a oprit.")          
+        print("Thread-ul pentru receptie s-a oprit.")
 
     def conectare_broker(self, broker_address, broker_port):
         try:
@@ -186,7 +239,15 @@ class MQTTClient:
 
 
             #pachet CONNECT 
-            connect_packet = self.encoder.CONNECT(self.client_id, self.lw_topic, self.lw_payload, self.username, self.password)
+            connect_packet = self.encoder.CONNECT(
+                self.client_id,
+                self.lw_topic,
+                self.lw_payload,
+                self.lw_qos if self.lw_qos is not None else 0,
+                self.lw_retain,
+                self.username,
+                self.password
+            )
             self.socket.sendall(connect_packet)
             print("Pachet CONNECT trimis.")
             self.connected=True
@@ -282,21 +343,19 @@ class MQTTClient:
             print(f"Eroare la trimiterea pachetului PUBLISH: {e}")
 
 
-    def subscribe(self,topic, qos):
+    def subscribe(self, topic, qos):
         if not self.connected:
             print("Nu esti conectat la broker!")
             return
-        
-        #generare ID pentru mesaj
+
         message_id = self.packet_id
         try:
             subscribe_packet = self.encoder.SUBSCRIBE(message_id, topic, qos)
             self.socket.sendall(subscribe_packet)
-            
+
             print(f"Pachet SUBSCRIBE trimis pentru topic '{topic}' cu QoS {qos}.\n")
 
-            if qos > 0:
-                self.packet_id += 1
+            self.packet_id += 1
 
         except Exception as e:
             print(f"Eroare la trimiterea pachetului SUBSCRIBE: {e}")
@@ -305,14 +364,15 @@ class MQTTClient:
         if not self.connected:
             print("Nu esti conectat la broker!")
             return
-        
-        #generare ID pentru mesaj
+
         message_id = self.packet_id
         try:
             unsubscribe_packet = self.encoder.UNSUBSCRIBE(message_id, topic)
-            
             self.socket.sendall(unsubscribe_packet)
+
             print(f"Pachet UNSUBSCRIBE trimis pentru topic '{topic}'.")
+
+            self.packet_id += 1
 
         except Exception as e:
             print(f"Eroare la trimiterea pachetului UNSUBSCRIBE: {e}")

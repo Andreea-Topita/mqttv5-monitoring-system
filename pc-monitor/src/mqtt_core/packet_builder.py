@@ -1,6 +1,6 @@
 class PacketBuilder:
 
-    def CONNECT(self, client_id, lw_topic, lw_payload, username, password,keep_alive=10):
+    def CONNECT(self, client_id, lw_topic, lw_payload, lw_qos, lw_retain, username, password, keep_alive=10):
         #FIXED HEADER
         packet = bytearray()
         packet.extend(b'\x10')  #CONNECT = 1, Flag = 0 (0001 0000)
@@ -14,8 +14,24 @@ class PacketBuilder:
         packet.extend(b'\x05')      #Protocol Level: MQTT v5
         
         #FLAGS
-        packet.extend(b'\xC6')      #Flags (Username=1, Password=1,Will Retain=0, Will QoS=00, Will Flag=1, Clean Start=1, Reserved=0)
-        
+        #packet.extend(b'\xC6')      #Flags (Username=1, Password=1,Will Retain=0, Will QoS=00, Will Flag=1, Clean Start=1, Reserved=0)
+        connect_flags = 0x02  # Clean Start = 1
+
+        if username:
+            connect_flags |= 0x80
+
+        if password:
+            connect_flags |= 0x40
+
+        if lw_topic is not None and lw_payload is not None:
+            connect_flags |= 0x04  # Will Flag
+            connect_flags |= (lw_qos & 0x03) << 3
+
+            if lw_retain:
+                connect_flags |= 0x20
+
+        packet.append(connect_flags)
+
         #sa expire la un nr de secunde ; sa trimita un nou pachet ;
         #repornirea time 
         packet.extend(int(keep_alive).to_bytes(2, 'big'))  #Keep Alive: 10 sec(2 octeti, big-endian)
@@ -31,30 +47,33 @@ class PacketBuilder:
         #replace= inlocuieste caracterele invalide cu ?
 
         #LAST WILL TOPIC, MESSAGE
-        packet.extend(b'\x00')          #Lungime Will properties=0
-            #LAST WILL TOPIC
-        packet.extend((len(lw_topic)).to_bytes(2, 'big'))          #Lungime Will Topic
-        packet.extend(lw_topic.encode('utf-8',errors='replace'))   #Will Topic
-            #LAST WILL MESSAGE
-        packet.extend((len(lw_payload)).to_bytes(2, 'big'))        #Lungime Last Will Message
-        packet.extend(lw_payload.encode('utf-8',errors='replace')) #Last Will Message
+        if lw_topic is not None and lw_payload is not None:
+            packet.extend(b'\x00')          #Lungime Will properties=0
+                #LAST WILL TOPIC
+            packet.extend((len(lw_topic)).to_bytes(2, 'big'))          #Lungime Will Topic
+            packet.extend(lw_topic.encode('utf-8',errors='replace'))   #Will Topic
+                #LAST WILL MESSAGE
+            packet.extend((len(lw_payload)).to_bytes(2, 'big'))        #Lungime Last Will Message
+            packet.extend(lw_payload.encode('utf-8',errors='replace')) #Last Will Message
         
         #USERNAME
-        packet.extend((len(username)).to_bytes(2, 'big'))          #Lungime Username 
-        packet.extend(username.encode('utf-8', errors='replace'))  #Username
+        if username:
+            packet.extend((len(username)).to_bytes(2, 'big'))          #Lungime Username 
+            packet.extend(username.encode('utf-8', errors='replace'))  #Username
 
         #PASSWORD
-        packet.extend((len(password)).to_bytes(2, 'big'))          #Lungime Password 
-        packet.extend(password.encode('utf-8', errors='replace'))  #Password
+        if password:
+            packet.extend((len(password)).to_bytes(2, 'big'))          #Lungime Password 
+            packet.extend(password.encode('utf-8', errors='replace'))  #Password
 
         #FIXED HEADER UPDATE
-        remaining_length=len(packet)-2   #primii 2 din fixed header
-        packet[1:2]=remaining_length.to_bytes(1,'big')       #lungimea ramasa 
+        remaining_length = len(packet) - 2   #primii 2 din fixed header
+        packet[1:2] = remaining_length.to_bytes(1,'big')       #lungimea ramasa 
         #big endian = cei mai semnificativi sunt plasati la inceput
         #se genereaza un sir de octeti, slice permite modificarea unui interval din bytearray
         return packet
     
-    def PUBLISH(self, packet_id, qos, topic, message, dup=0, retain=1):
+    def PUBLISH(self, packet_id, qos, topic, message, dup=0, retain=0):
     # dup flag pentru re-delivery: 0 sau 1
     # param retain: flag pentru a retine mesajul 0 sau 1
         packet = bytearray()

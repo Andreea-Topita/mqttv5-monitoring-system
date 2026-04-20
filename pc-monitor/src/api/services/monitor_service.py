@@ -132,5 +132,5 @@ class MonitorService:
             return {
                 "connected": self.connected,
                 "periodic_publishing": self.periodic_publishing,
-                "subscriptions": self.subscriptions
+                "subscriptions": dict(self.subscriptions)
             }

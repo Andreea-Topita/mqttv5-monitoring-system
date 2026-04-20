@@ -76,9 +76,10 @@ export class ApiService {
     return this.http.post(`${this.baseUrl}/api/subscription/unsubscribe`, payload);
   }
 
-  publishMetric(payload: PublishMetricRequest) {
-    return this.http.post(`${this.baseUrl}/api/publishing/publish-metric`, payload);
+  publishMessage(payload: PublishMessageRequest) {
+    return this.http.post(`${this.baseUrl}/api/publishing/publish-message`, payload);
   }
+
 
   startPeriodic(payload: PeriodicPublishRequest) {
     return this.http.post(`${this.baseUrl}/api/publishing/start-periodic`, payload);
