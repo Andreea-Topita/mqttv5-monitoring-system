@@ -52,6 +52,11 @@ class MonitorService:
         last_will_qos: int,
         last_will_retain: bool = False,
     ):
+        with self.lock:
+            self.received_messages = []
+            self.message_counter = 0
+            self.subscriptions = {}
+
         self.client = MQTTClient(
             client_id=client_id,
             on_message_callback=self._handle_incoming_message
@@ -66,6 +71,10 @@ class MonitorService:
             self.client.disconnect()
             self.connected = False
             self.periodic_publishing = False
+
+        #dupa deconectare nu mai esti abonat la nimic, stergem tot
+        with self.lock:
+            self.subscriptions.clear()
 
     def publish_message(self, topic: str, message: str, qos: int):
         if not self.client or not self.connected:

@@ -167,7 +167,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   publishMessageNow() {
-    this.clearMessages();
+    this.clearNotifications();
 
     this.api.publishMessage({
       topic: this.publishTopic,
@@ -184,7 +184,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   startPeriodicPublishing() {
-    this.clearMessages();
+    this.clearNotifications();
 
     this.api.startPeriodic({
       topic: this.publishTopic,
@@ -203,7 +203,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   stopPeriodicPublishing() {
-    this.clearMessages();
+    this.clearNotifications();
 
     this.api.stopPeriodic().subscribe({
       next: () => {
@@ -217,7 +217,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   subscribeToTopic() {
-    this.clearMessages();
+    this.clearNotifications();
     this.stopPolling();
 
     this.api.subscribe({
@@ -239,6 +239,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
         this.activeMessageTopic = this.subscribeTopic;
         this.messages = [];
+        this.lastMessageId = 0;
 
         setTimeout(() => {
           this.loadMessages();
@@ -257,7 +258,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   unsubscribeFromTopic() {
-    this.clearMessages();
+    this.clearNotifications();
     this.stopPolling();
 
     this.api.unsubscribe({
@@ -281,6 +282,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         }
 
         this.messages = [];
+        this.lastMessageId = 0;
 
         setTimeout(() => {
           this.startPolling();
@@ -316,7 +318,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return this.messages.filter(msg => msg.topic === this.activeMessageTopic);
   }
 
-  clearMessages() {
+  clearNotifications() {
     this.infoMessage = '';
     this.errorMessage = '';
   }
