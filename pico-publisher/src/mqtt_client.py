@@ -16,6 +16,7 @@ class MQTTClientPico:
         will_topic: str = None,
         will_payload: str = None,
         will_qos: int = 0,
+        will_retain: bool = False,
     ):
         self.broker_ip = broker_ip
         self.broker_port = broker_port
@@ -26,6 +27,8 @@ class MQTTClientPico:
         self.will_topic = will_topic
         self.will_payload = will_payload
         self.will_qos = will_qos
+        self.will_retain = will_retain
+
 
         self.last_activity = time.time()
         self.sock = None
@@ -73,6 +76,7 @@ class MQTTClientPico:
             will_topic=self.will_topic,
             will_payload=self.will_payload,
             will_qos=self.will_qos,
+            will_retain=self.will_retain,
         )
         self._send_all(packet)
 
