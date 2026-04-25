@@ -4,7 +4,7 @@ from mqtt_client import MQTTClientPico
 from temp_sensor import TempSensor
 
 #parola internet de acasa 
-SSID = "Digi-5205"
+SSID = "DIGI-5205"
 PASSWORD = "SPGgu6wJ"
 
 # broker mqtt
