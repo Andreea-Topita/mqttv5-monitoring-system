@@ -14,7 +14,7 @@ import { ApiService, ConnectRequest } from '../../services/api.service';
 })
 export class ConnectComponent {
   form: ConnectRequest = {
-    broker_address: 'localhost',
+    broker_address: '192.168.100.18',
     broker_port: 1883,
     client_id: 'mqtt',
     username: '',
