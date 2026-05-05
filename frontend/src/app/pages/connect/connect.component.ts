@@ -16,12 +16,12 @@ export class ConnectComponent {
   form: ConnectRequest = {
     broker_address: '192.168.100.18',
     broker_port: 1883,
-    client_id: 'mqtt',
+    client_id: 'pc_monitor_01',
     username: '',
     password: '',
-    last_will_topic: 'Cpu load',
-    last_will_message: 'Clientul s-a deconectat.',
-    last_will_qos: 0,
+    last_will_topic: 'licenta/pc/status',
+    last_will_message: 'offline',
+    last_will_qos: 1,
     last_will_retain: false
   };
 
@@ -39,11 +39,9 @@ export class ConnectComponent {
     if (
       !this.form.broker_address ||
       !this.form.broker_port ||
-      !this.form.client_id ||
-      !this.form.username ||
-      !this.form.password
+      !this.form.client_id
     ) {
-      this.errorMessage = 'Toate campurile importante trebuie completate.';
+      this.errorMessage = 'Broker address, broker port and client ID are required.';
       return;
     }
 
@@ -56,7 +54,7 @@ export class ConnectComponent {
       },
       error: (err: any) => {
         this.loading = false;
-        this.errorMessage = err?.error?.detail || 'Conectarea a esuat.';
+        this.errorMessage = err?.error?.detail || 'Connection failed.';
       }
     });
   }

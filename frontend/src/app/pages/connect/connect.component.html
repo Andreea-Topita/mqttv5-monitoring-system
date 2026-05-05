@@ -1,58 +1,99 @@
-<div class="page">
-  <div class="card">
-    <h1>MQTT v5 Monitor</h1>
-    <p>Conectare la broker</p>
+<div class="connect-shell">
+  <div class="connect-wrapper">
 
-    <div class="form-grid">
-      <div>
-        <label>Broker address</label>
-        <input [(ngModel)]="form.broker_address" />
-      </div>
-
-      <div>
-        <label>Broker port</label>
-        <input type="number" [(ngModel)]="form.broker_port" />
-      </div>
-
-      <div>
-        <label>Client ID</label>
-        <input [(ngModel)]="form.client_id" />
-      </div>
-
-      <div>
-        <label>Username</label>
-        <input [(ngModel)]="form.username" />
-      </div>
-
-      <div>
-        <label>Password</label>
-        <input type="password" [(ngModel)]="form.password" />
-      </div>
-
-      <div>
-        <label>Last Will Topic</label>
-        <input [(ngModel)]="form.last_will_topic" />
-      </div>
-
-      <div class="full">
-        <label>Last Will Message</label>
-        <input [(ngModel)]="form.last_will_message" />
-      </div>
-
-      <div>
-        <label>Last Will QoS</label>
-        <select [(ngModel)]="form.last_will_qos">
-          <option [ngValue]="0">0</option>
-          <option [ngValue]="1">1</option>
-          <option [ngValue]="2">2</option>
-        </select>
+    <div class="hero-card">
+      <div class="hero-text">
+        <p class="eyebrow">MQTT v5 Device Monitoring</p>
+        <h1>Operations Console</h1>
+        <p>
+          Connect the desktop client to the MQTT broker, configure the Last Will
+          settings and open the live monitoring workspace for telemetry and topic activity.
+        </p>
       </div>
     </div>
 
-    <button (click)="connect()" [disabled]="loading">
-      {{ loading ? 'Connecting...' : 'Connect' }}
-    </button>
+    <div class="form-card">
+      <div class="section-header">
+        <div>
+          <h2>Broker Connection</h2>
+          <p>Configure the desktop MQTT client and open the monitoring dashboard.</p>
+        </div>
+      </div>
 
-    <p class="error" *ngIf="errorMessage">{{ errorMessage }}</p>
+      <p class="error-message" *ngIf="errorMessage">{{ errorMessage }}</p>
+
+      <div class="form-grid">
+        <div class="field">
+          <label>Broker address</label>
+          <input type="text" [(ngModel)]="form.broker_address" placeholder="Example: 192.168.100.18" />
+        </div>
+
+        <div class="field">
+          <label>Broker port</label>
+          <input type="number" [(ngModel)]="form.broker_port" placeholder="1883" />
+        </div>
+
+        <div class="field">
+          <label>Client ID</label>
+          <input type="text" [(ngModel)]="form.client_id" placeholder="Example: pc_monitor_01" />
+        </div>
+
+        <div class="field">
+          <label>Username</label>
+          <input type="text" [(ngModel)]="form.username" placeholder="Optional" />
+        </div>
+
+        <div class="field field-full">
+          <label>Password</label>
+          <input type="password" [(ngModel)]="form.password" placeholder="Optional" />
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="section-header small">
+        <div>
+          <h3>Last Will Configuration</h3>
+          <p>
+            The broker publishes this message if the desktop client disconnects unexpectedly.
+          </p>
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="field">
+          <label>Last Will topic</label>
+          <input type="text" [(ngModel)]="form.last_will_topic" placeholder="Example: licenta/pc/status" />
+        </div>
+
+        <div class="field">
+          <label>Last Will QoS</label>
+          <select [(ngModel)]="form.last_will_qos">
+            <option [ngValue]="0">0</option>
+            <option [ngValue]="1">1</option>
+            <option [ngValue]="2">2</option>
+          </select>
+        </div>
+
+        <div class="field field-full">
+          <label>Last Will message</label>
+          <input type="text" [(ngModel)]="form.last_will_message" placeholder="Example: offline" />
+        </div>
+
+        <div class="checkbox-field field-full">
+          <label class="checkbox-row">
+            <input type="checkbox" [(ngModel)]="form.last_will_retain" />
+            <span>Retain Last Will message</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="connect-actions">
+        <button class="connect-btn" (click)="connect()" [disabled]="loading">
+          {{ loading ? 'Connecting...' : 'Connect' }}
+        </button>
+      </div>
+    </div>
+
   </div>
 </div>

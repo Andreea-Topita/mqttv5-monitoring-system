@@ -32,7 +32,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   };
 
   publishTopic = 'licenta/pc/test';
-  publishMessage = 'mesaj test de pe pc';
+  publishMessage = 'test message from desktop client';
   publishQos = 0;
   periodicInterval = 5;
 
@@ -49,7 +49,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   infoMessage = '';
   errorMessage = '';
-
 
   private pollingId: number | null = null;
   private loadingStatus = false;
@@ -175,7 +174,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       qos: this.publishQos
     }).subscribe({
       next: () => {
-        this.infoMessage = `Mesaj publicat pe topicul ${this.publishTopic}.`;
+        this.infoMessage = `Message published to ${this.publishTopic}.`;
       },
       error: (err: any) => {
         this.errorMessage = err?.error?.detail || 'Publish failed.';
@@ -193,7 +192,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       interval: this.periodicInterval
     }).subscribe({
       next: () => {
-        this.infoMessage = 'Periodic publish pornit.';
+        this.infoMessage = 'Periodic publishing started.';
         setTimeout(() => this.loadStatus(), 300);
       },
       error: (err: any) => {
@@ -207,7 +206,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     this.api.stopPeriodic().subscribe({
       next: () => {
-        this.infoMessage = 'Periodic publish oprit.';
+        this.infoMessage = 'Periodic publishing stopped.';
         setTimeout(() => this.loadStatus(), 300);
       },
       error: (err: any) => {
@@ -220,12 +219,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.clearNotifications();
     this.stopPolling();
 
+    const topic = this.subscribeTopic;
+    const qos = this.subscribeQos;
+
     this.api.subscribe({
-      topic: this.subscribeTopic,
-      qos: this.subscribeQos
+      topic,
+      qos
     }).subscribe({
       next: () => {
-        this.infoMessage = `Subscribed la ${this.subscribeTopic}.`;
+        this.infoMessage = `Subscribed to ${topic}.`;
 
         this.pauseStatusSync(1200);
 
@@ -233,11 +235,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
           ...this.status,
           subscriptions: {
             ...this.status.subscriptions,
-            [this.subscribeTopic]: this.subscribeQos
+            [topic]: qos
           }
         };
 
-        this.activeMessageTopic = this.subscribeTopic;
+        this.activeMessageTopic = topic;
         this.messages = [];
         this.lastMessageId = 0;
 
@@ -261,23 +263,25 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.clearNotifications();
     this.stopPolling();
 
+    const topic = this.subscribeTopic;
+
     this.api.unsubscribe({
-      topic: this.subscribeTopic
+      topic
     }).subscribe({
       next: () => {
-        this.infoMessage = `Unsubscribed de la ${this.subscribeTopic}.`;
+        this.infoMessage = `Unsubscribed from ${topic}.`;
 
         this.pauseStatusSync(1200);
 
         const updatedSubscriptions = { ...this.status.subscriptions };
-        delete updatedSubscriptions[this.subscribeTopic];
+        delete updatedSubscriptions[topic];
 
         this.status = {
           ...this.status,
           subscriptions: updatedSubscriptions
         };
 
-        if (this.activeMessageTopic === this.subscribeTopic) {
+        if (this.activeMessageTopic === topic) {
           this.activeMessageTopic = '';
         }
 
@@ -299,17 +303,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  
-  getSubscriptionStatus(): string {
-    const qos = this.status.subscriptions[this.subscribeTopic];
-
-    if (qos === undefined) {
-      return 'UNSUBSCRIBED';
-    }
-
-    return `SUBSCRIBED (QoS ${qos})`;
-  }
-
   get displayedMessages(): MessageItem[] {
     if (!this.activeMessageTopic) {
       return [];
@@ -321,5 +314,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
   clearNotifications() {
     this.infoMessage = '';
     this.errorMessage = '';
+  }
+
+  isSelectedTopicSubscribed(): boolean {
+    return this.status.subscriptions[this.subscribeTopic] !== undefined;
+  }
+
+  getSelectedTopicQos(): number | null {
+    const qos = this.status.subscriptions[this.subscribeTopic];
+    return qos === undefined ? null : qos;
   }
 }
