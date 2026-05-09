@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { timeout } from 'rxjs';
 
 import { ApiService, ConnectRequest } from '../../services/api.service';
 
@@ -47,15 +48,28 @@ export class ConnectComponent {
 
     this.loading = true;
 
-    this.api.connect(this.form).subscribe({
-      next: () => {
-        this.loading = false;
-        this.router.navigate(['/dashboard']);
-      },
-      error: (err: any) => {
-        this.loading = false;
-        this.errorMessage = err?.error?.detail || 'Connection failed.';
-      }
-    });
+    this.api.connect(this.form)
+      .pipe(timeout(8000))
+      .subscribe({
+        next: () => {
+          this.loading = false;
+          this.router.navigate(['/dashboard']);
+        },
+        error: (err: any) => {
+          this.loading = false;
+
+          if (err?.name === 'TimeoutError') {
+            this.errorMessage = 'Connection timeout. Check whether the backend API and MQTT broker are running.';
+            return;
+          }
+
+          if (err?.status === 0) {
+            this.errorMessage = 'Cannot reach the backend API. Make sure the server is running on port 8000.';
+            return;
+          }
+
+          this.errorMessage = err?.error?.detail || 'Connection failed.';
+        }
+      });
   }
 }
