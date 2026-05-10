@@ -116,7 +116,7 @@
 
           <div class="field">
             <label>QoS</label>
-            <select [(ngModel)]="subscribeQos">
+            <select [ngModel]="subscribeQos" (ngModelChange)="onSubscribeQosChange($event)">
               <option [ngValue]="0">0</option>
               <option [ngValue]="1">1</option>
               <option [ngValue]="2">2</option>
@@ -131,7 +131,10 @@
             <div class="selected-topic-status" [class.active]="isSelectedTopicSubscribed()">
               <span class="status-label">Subscription state</span>
               <strong>{{ isSelectedTopicSubscribed() ? 'Subscribed' : 'Not subscribed' }}</strong>
-              <span *ngIf="isSelectedTopicSubscribed()">QoS {{ getSelectedTopicQos() }}</span>
+              <span *ngIf="isSelectedTopicSubscribed()">Current QoS {{ getSelectedTopicQos() }}</span>
+              <span *ngIf="isSelectedTopicSubscribed() && !isSelectedTopicSubscribedWithSameQos()">
+                Selected QoS {{ subscribeQos }} will update the subscription
+              </span>
             </div>
           </div>
 
@@ -155,16 +158,16 @@
           <button
             class="primary-btn"
             (click)="subscribeToTopic()"
-            [disabled]="isSelectedTopicSubscribed()">
+            [disabled]="isSelectedTopicSubscribedWithSameQos()">
             Subscribe
           </button>
 
-          <button
-            class="ghost-btn"
-            (click)="unsubscribeFromTopic()"
-            [disabled]="!isSelectedTopicSubscribed()">
-            Unsubscribe
-          </button>
+         <button
+          class="ghost-btn"
+          (click)="unsubscribeFromTopic()"
+          [disabled]="!isSelectedTopicSubscribed()">
+          Unsubscribe
+        </button>
         </div>
       </div>
     </section>

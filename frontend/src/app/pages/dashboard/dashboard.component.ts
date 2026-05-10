@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -9,6 +9,32 @@ import {
   StatusResponse
 } from '../../services/api.service';
 
+import {
+  DASHBOARD_TOPICS,
+  DEFAULT_PERIODIC_INTERVAL,
+  DEFAULT_PUBLISH_MESSAGE,
+  DEFAULT_PUBLISH_QOS,
+  DEFAULT_PUBLISH_TOPIC,
+  DEFAULT_SUBSCRIBE_QOS,
+  DEFAULT_SUBSCRIBE_TOPIC,
+  PERIODIC_STATUS_REFRESH_DELAY_MS,
+  POLLING_INTERVAL_MS,
+  STATUS_REFRESH_DELAY_MS,
+  STATUS_SYNC_PAUSE_MS
+} from './dashboard.config';
+
+import {
+  LatestTelemetryState,
+  createInitialStatus,
+  createInitialTelemetryState,
+  getNextActiveTopic,
+  getSubscriptionQos,
+  hasSameSubscriptionQos,
+  isTopicSubscribed,
+  normalizeStatus,
+  updateTelemetryState
+} from './dashboard.helpers';
+
 @Component({
   selector: 'app-dashboard',
   standalone: true,
@@ -17,27 +43,17 @@ import {
   styleUrl: './dashboard.component.css'
 })
 export class DashboardComponent implements OnInit, OnDestroy {
-  topics = [
-    'licenta/pico/status',
-    'licenta/pico/temperatura',
-    'licenta/pico/umiditate',
-    'licenta/pc/test',
-    'licenta/pc/comenzi'
-  ];
+  topics = DASHBOARD_TOPICS;
 
-  status: StatusResponse = {
-    connected: false,
-    periodic_publishing: false,
-    subscriptions: {}
-  };
+  status: StatusResponse = createInitialStatus();
 
-  publishTopic = 'licenta/pc/test';
-  publishMessage = 'test message from desktop client';
-  publishQos = 0;
-  periodicInterval = 5;
+  publishTopic = DEFAULT_PUBLISH_TOPIC;
+  publishMessage = DEFAULT_PUBLISH_MESSAGE;
+  publishQos = DEFAULT_PUBLISH_QOS;
+  periodicInterval = DEFAULT_PERIODIC_INTERVAL;
 
-  subscribeTopic = 'licenta/pico/temperatura';
-  subscribeQos = 0;
+  subscribeTopic = DEFAULT_SUBSCRIBE_TOPIC;
+  subscribeQos = DEFAULT_SUBSCRIBE_QOS;
 
   activeMessageTopic = '';
   messages: MessageItem[] = [];
@@ -54,19 +70,29 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private loadingStatus = false;
   private loadingMessages = false;
   private pauseStatusSyncUntil = 0;
+  private destroyed = false;
 
   constructor(
     private api: ApiService,
-    private router: Router
+    private router: Router,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
     this.loadStatus();
+    this.loadMessages();
     this.startPolling();
   }
 
   ngOnDestroy() {
+    this.destroyed = true;
     this.stopPolling();
+  }
+
+  private syncView() {
+    if (!this.destroyed) {
+      this.cdr.detectChanges();
+    }
   }
 
   private stopPolling() {
@@ -80,16 +106,47 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.pauseStatusSyncUntil = Date.now() + ms;
   }
 
+  private refreshStatusAfterDelay(delayMs: number) {
+    window.setTimeout(() => {
+      this.loadStatus();
+    }, delayMs);
+  }
+
+  private syncActiveTopicWithSubscriptions() {
+    this.activeMessageTopic = getNextActiveTopic(
+      this.status.subscriptions,
+      this.subscribeTopic,
+      this.activeMessageTopic
+    );
+  }
+
+  private applyTelemetryState(nextTelemetry: LatestTelemetryState) {
+    this.latestStatus = nextTelemetry.latestStatus;
+    this.latestTemperature = nextTelemetry.latestTemperature;
+    this.latestHumidity = nextTelemetry.latestHumidity;
+  }
+
+  private resetMessagesState() {
+    this.messages = [];
+    this.lastMessageId = 0;
+  }
+
+  private resetDashboardState() {
+    this.status = createInitialStatus();
+    this.activeMessageTopic = '';
+    this.resetMessagesState();
+
+    const telemetry = createInitialTelemetryState();
+    this.applyTelemetryState(telemetry);
+  }
+
   startPolling() {
     this.stopPolling();
 
     this.pollingId = window.setInterval(() => {
       this.loadStatus();
-
-      if (this.status.connected) {
-        this.loadMessages();
-      }
-    }, 2000);
+      this.loadMessages();
+    }, POLLING_INTERVAL_MS);
   }
 
   loadStatus() {
@@ -105,11 +162,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
           return;
         }
 
-        this.status = res;
+        this.status = normalizeStatus(res);
+        this.syncActiveTopicWithSubscriptions();
+        this.syncView();
       },
       error: () => {},
       complete: () => {
         this.loadingStatus = false;
+        this.syncView();
       }
     });
   }
@@ -126,41 +186,41 @@ export class DashboardComponent implements OnInit, OnDestroy {
         if (res.messages.length > 0) {
           this.messages = [...this.messages, ...res.messages];
           this.lastMessageId = res.messages[res.messages.length - 1].id;
-          this.updateLatestValues(res.messages);
+
+          const nextTelemetry = updateTelemetryState(
+            {
+              latestStatus: this.latestStatus,
+              latestTemperature: this.latestTemperature,
+              latestHumidity: this.latestHumidity
+            },
+            res.messages
+          );
+
+          this.applyTelemetryState(nextTelemetry);
+          this.syncView();
         }
       },
       error: () => {},
       complete: () => {
         this.loadingMessages = false;
+        this.syncView();
       }
     });
   }
 
-  updateLatestValues(newMessages: MessageItem[]) {
-    for (const msg of newMessages) {
-      if (msg.topic === 'licenta/pico/status') {
-        this.latestStatus = msg.message;
-      }
-
-      if (msg.topic === 'licenta/pico/temperatura') {
-        this.latestTemperature = msg.message;
-      }
-
-      if (msg.topic === 'licenta/pico/umiditate') {
-        this.latestHumidity = msg.message;
-      }
-    }
-  }
-
   disconnect() {
     this.stopPolling();
+    this.clearNotifications();
 
     this.api.disconnect().subscribe({
       next: () => {
+        this.resetDashboardState();
+        this.syncView();
         this.router.navigate(['/connect']);
       },
       error: (err: any) => {
         this.errorMessage = err?.error?.detail || 'Disconnect failed.';
+        this.syncView();
       }
     });
   }
@@ -175,9 +235,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }).subscribe({
       next: () => {
         this.infoMessage = `Message published to ${this.publishTopic}.`;
+        this.syncView();
       },
       error: (err: any) => {
         this.errorMessage = err?.error?.detail || 'Publish failed.';
+        this.syncView();
       }
     });
   }
@@ -193,10 +255,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }).subscribe({
       next: () => {
         this.infoMessage = 'Periodic publishing started.';
-        setTimeout(() => this.loadStatus(), 300);
+        this.status = {
+          ...this.status,
+          periodic_publishing: true
+        };
+        this.syncView();
+        this.refreshStatusAfterDelay(PERIODIC_STATUS_REFRESH_DELAY_MS);
       },
       error: (err: any) => {
         this.errorMessage = err?.error?.detail || 'Periodic publish failed.';
+        this.syncView();
       }
     });
   }
@@ -207,10 +275,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.api.stopPeriodic().subscribe({
       next: () => {
         this.infoMessage = 'Periodic publishing stopped.';
-        setTimeout(() => this.loadStatus(), 300);
+        this.status = {
+          ...this.status,
+          periodic_publishing: false
+        };
+        this.syncView();
+        this.refreshStatusAfterDelay(PERIODIC_STATUS_REFRESH_DELAY_MS);
       },
       error: (err: any) => {
         this.errorMessage = err?.error?.detail || 'Stop periodic failed.';
+        this.syncView();
       }
     });
   }
@@ -220,16 +294,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.stopPolling();
 
     const topic = this.subscribeTopic;
-    const qos = this.subscribeQos;
+    const qos = Number(this.subscribeQos);
 
-    this.api.subscribe({
-      topic,
-      qos
-    }).subscribe({
+    this.api.subscribe({ topic, qos }).subscribe({
       next: () => {
         this.infoMessage = `Subscribed to ${topic}.`;
-
-        this.pauseStatusSync(1200);
+        this.pauseStatusSync(STATUS_SYNC_PAUSE_MS);
 
         this.status = {
           ...this.status,
@@ -240,21 +310,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
         };
 
         this.activeMessageTopic = topic;
-        this.messages = [];
-        this.lastMessageId = 0;
+        this.resetMessagesState();
 
-        setTimeout(() => {
-          this.loadMessages();
-          this.startPolling();
-        }, 300);
-
-        setTimeout(() => {
-          this.loadStatus();
-        }, 1300);
+        this.syncView();
+        this.loadMessages();
+        this.startPolling();
+        this.refreshStatusAfterDelay(STATUS_REFRESH_DELAY_MS);
       },
       error: (err: any) => {
         this.errorMessage = err?.error?.detail || 'Subscribe failed.';
         this.startPolling();
+        this.syncView();
       }
     });
   }
@@ -265,13 +331,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     const topic = this.subscribeTopic;
 
-    this.api.unsubscribe({
-      topic
-    }).subscribe({
+    this.api.unsubscribe({ topic }).subscribe({
       next: () => {
         this.infoMessage = `Unsubscribed from ${topic}.`;
-
-        this.pauseStatusSync(1200);
+        this.pauseStatusSync(STATUS_SYNC_PAUSE_MS);
 
         const updatedSubscriptions = { ...this.status.subscriptions };
         delete updatedSubscriptions[topic];
@@ -285,20 +348,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
           this.activeMessageTopic = '';
         }
 
-        this.messages = [];
-        this.lastMessageId = 0;
+        this.resetMessagesState();
+        this.syncActiveTopicWithSubscriptions();
 
-        setTimeout(() => {
-          this.startPolling();
-        }, 300);
-
-        setTimeout(() => {
-          this.loadStatus();
-        }, 1300);
+        this.syncView();
+        this.loadMessages();
+        this.startPolling();
+        this.refreshStatusAfterDelay(STATUS_REFRESH_DELAY_MS);
       },
       error: (err: any) => {
         this.errorMessage = err?.error?.detail || 'Unsubscribe failed.';
         this.startPolling();
+        this.syncView();
       }
     });
   }
@@ -317,11 +378,23 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   isSelectedTopicSubscribed(): boolean {
-    return this.status.subscriptions[this.subscribeTopic] !== undefined;
+    return isTopicSubscribed(this.status.subscriptions, this.subscribeTopic);
+  }
+
+  isSelectedTopicSubscribedWithSameQos(): boolean {
+    return hasSameSubscriptionQos(
+      this.status.subscriptions,
+      this.subscribeTopic,
+      this.subscribeQos
+    );
   }
 
   getSelectedTopicQos(): number | null {
-    const qos = this.status.subscriptions[this.subscribeTopic];
-    return qos === undefined ? null : qos;
+    return getSubscriptionQos(this.status.subscriptions, this.subscribeTopic);
+  }
+
+  onSubscribeQosChange(value: any) {
+    this.subscribeQos = Number(value);
+    this.syncView();
   }
 }
