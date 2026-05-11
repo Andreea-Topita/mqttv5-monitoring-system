@@ -1,0 +1,26 @@
+CREATE TABLE IF NOT EXISTS mqtt_messages (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    topic VARCHAR(255) NOT NULL,
+    payload TEXT NOT NULL,
+    qos TINYINT NOT NULL,
+    direction VARCHAR(20) NOT NULL,
+    source_client_id VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS subscription_events (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    topic VARCHAR(255) NOT NULL,
+    qos TINYINT NOT NULL,
+    action VARCHAR(20) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS connection_events (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    client_id VARCHAR(100) NOT NULL,
+    broker_address VARCHAR(255) NOT NULL,
+    broker_port INT NOT NULL,
+    event_type VARCHAR(30) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

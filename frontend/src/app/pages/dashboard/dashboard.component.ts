@@ -369,7 +369,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
       return [];
     }
 
-    return this.messages.filter(msg => msg.topic === this.activeMessageTopic);
+    return this.messages
+      .filter(msg => msg.topic === this.activeMessageTopic)
+      .slice(-20);
   }
 
   clearNotifications() {

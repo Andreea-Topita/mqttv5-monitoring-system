@@ -6,7 +6,14 @@ from src.api.routes.subscription import router as subscription_router
 from src.api.routes.publishing import router as publishing_router
 from src.api.routes.messages import router as messages_router
 
+
+from src.database.connection import Base, engine
+import src.models
+
+
 app = FastAPI(title="MQTT Monitoring API")
+Base.metadata.create_all(bind=engine)
+
 
 app.add_middleware(
     CORSMiddleware,

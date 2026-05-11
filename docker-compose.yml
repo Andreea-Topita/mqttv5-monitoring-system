@@ -1,0 +1,19 @@
+services:
+  mysql-db:
+    image: mysql:8.0
+    container_name: mqtt_mysql_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root1234
+      MYSQL_DATABASE: mqtt_monitoring
+      MYSQL_USER: mqtt_user
+      MYSQL_PASSWORD: mqtt_pass123
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    command: --default-authentication-plugin=mysql_native_password
+
+volumes:
+  mysql_data:
