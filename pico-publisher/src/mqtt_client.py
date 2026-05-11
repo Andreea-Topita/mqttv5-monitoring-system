@@ -29,6 +29,9 @@ class MQTTClientPico:
         self.will_qos = will_qos
         self.will_retain = will_retain
 
+        self.will_user_properties = {
+            "source_client_id": self.client_id
+        }
 
         self.last_activity = time.time()
         self.sock = None
@@ -77,6 +80,7 @@ class MQTTClientPico:
             will_payload=self.will_payload,
             will_qos=self.will_qos,
             will_retain=self.will_retain,
+            will_user_properties=self.will_user_properties,
         )
         self._send_all(packet)
 
@@ -127,7 +131,6 @@ class MQTTClientPico:
 
         if qos == 0:
             packet = self.packet_builder.publish_packet(
-                packet = self.packet_builder.publish_packet(
                 topic=topic,
                 message=message,
                 qos=0,

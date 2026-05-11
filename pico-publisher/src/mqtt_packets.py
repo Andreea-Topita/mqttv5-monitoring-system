@@ -31,6 +31,7 @@ class MQTTPackets:
         will_payload: str = None,
         will_qos: int = 0,
         will_retain: bool = False,
+        will_user_properties=None,
     ) -> bytes:
         variable_header = bytearray()
         variable_header.extend(b"\x00\x04")
@@ -59,7 +60,9 @@ class MQTTPackets:
         payload.extend(self._encode_utf8(client_id))
 
         if will_flag:
-            payload.extend(self._encode_varint(0))  # will properties length = 0
+            will_properties = self._encode_user_properties(will_user_properties)
+            payload.extend(self._encode_varint(len(will_properties)))
+            payload.extend(will_properties)
             payload.extend(self._encode_utf8(will_topic))
             payload.extend(self._encode_utf8(will_payload))
 
@@ -139,14 +142,14 @@ class MQTTPackets:
         return b"\xE0\x00"
     
     def _encode_user_properties(self, user_properties):
-    props = bytearray()
+        props = bytearray()
 
-    if not user_properties:
+        if not user_properties:
+            return bytes(props)
+
+        for key, value in user_properties.items():
+            props.append(0x26)  # User Property identifier
+            props.extend(self._encode_utf8(str(key)))
+            props.extend(self._encode_utf8(str(value)))
+
         return bytes(props)
-
-    for key, value in user_properties.items():
-        props.append(0x26)  # User Property identifier
-        props.extend(self._encode_utf8(str(key)))
-        props.extend(self._encode_utf8(str(value)))
-
-    return bytes(props)
