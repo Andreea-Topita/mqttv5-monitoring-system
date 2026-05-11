@@ -7,6 +7,15 @@ from src.repositories.connection_event_repository import ConnectionEventReposito
 from src.repositories.subscription_event_repository import SubscriptionEventRepository
 from src.repositories.mqtt_message_repository import MQTTMessageRepository
 
+from src.core.exceptions import (
+    AlreadyConnectedError,
+    BusinessValidationError,
+    ConnectionFailedError,
+    NotConnectedError,
+    PeriodicPublishAlreadyRunningError,
+    SubscriptionNotFoundError
+)
+
 
 class MonitorService:
     def __init__(
@@ -59,7 +68,12 @@ class MonitorService:
             if len(self.received_messages) > 100:
                 self.received_messages.pop(0)
 
-    def _handle_incoming_message(self, topic: str, message: str, source_client_id: Optional[str] = None):
+    def _handle_incoming_message(
+        self,
+        topic: str,
+        message: str,
+        source_client_id: Optional[str] = None
+    ):
         self._append_in_memory_message(topic, message)
 
         with self.lock:
@@ -72,11 +86,11 @@ class MonitorService:
             payload=message,
             qos=current_qos,
             direction="INBOUND",
-            source_client_id=None
+            source_client_id=source_client_id
         )
 
         if self.external_on_message_callback:
-            self.external_on_message_callback(topic, message)
+            self.external_on_message_callback(topic, message, source_client_id)
 
     def connect(
         self,
@@ -90,6 +104,21 @@ class MonitorService:
         last_will_qos: int,
         last_will_retain: bool = False,
     ):
+        if self.connected:
+            raise AlreadyConnectedError("Client is already connected to a broker.")
+
+        if not broker_address.strip():
+            raise BusinessValidationError("Broker address must not be empty.")
+
+        if not client_id.strip():
+            raise BusinessValidationError("Client ID must not be empty.")
+
+        if not last_will_topic.strip():
+            raise BusinessValidationError("Last will topic must not be empty.")
+
+        if not last_will_message.strip():
+            raise BusinessValidationError("Last will message must not be empty.")
+
         with self.lock:
             self.received_messages = []
             self.message_counter = 0
@@ -99,21 +128,27 @@ class MonitorService:
         self.broker_address = broker_address
         self.broker_port = broker_port
 
-        self.client = MQTTClient(
-            client_id=client_id,
-            on_message_callback=self._handle_incoming_message
-        )
+        try:
+            self.client = MQTTClient(
+                client_id=client_id,
+                on_message_callback=self._handle_incoming_message
+            )
 
-        self.client.will_set(
-            last_will_topic,
-            last_will_message,
-            qos=last_will_qos,
-            retain=last_will_retain
-        )
-        self.client.username_pw_set(username, password)
-        self.client.conectare_broker(broker_address, broker_port)
+            self.client.will_set(
+                last_will_topic,
+                last_will_message,
+                qos=last_will_qos,
+                retain=last_will_retain
+            )
+            self.client.username_pw_set(username, password)
+            self.client.conectare_broker(broker_address, broker_port)
 
-        self.connected = True
+            self.connected = True
+
+        except Exception as e:
+            self.client = None
+            self.connected = False
+            raise ConnectionFailedError(f"Failed to connect to broker: {e}")
 
         self._persist_safely(
             "saving connect event",
@@ -125,29 +160,34 @@ class MonitorService:
         )
 
     def disconnect(self):
-        if self.client and self.connected:
-            try:
-                self.client.disconnect()
-            finally:
-                self._persist_safely(
-                    "saving disconnect event",
-                    self.connection_event_repository.add_event,
-                    client_id=self.client_id,
-                    broker_address=self.broker_address,
-                    broker_port=self.broker_port,
-                    event_type="DISCONNECT"
-                )
+        if not self.client or not self.connected:
+            raise NotConnectedError("Client is not connected to any broker.")
 
-            self.connected = False
-            self.periodic_publishing = False
-            self.client = None
+        try:
+            self.client.disconnect()
+        finally:
+            self._persist_safely(
+                "saving disconnect event",
+                self.connection_event_repository.add_event,
+                client_id=self.client_id,
+                broker_address=self.broker_address,
+                broker_port=self.broker_port,
+                event_type="DISCONNECT"
+            )
+
+        self.connected = False
+        self.periodic_publishing = False
+        self.client = None
 
         with self.lock:
             self.subscriptions.clear()
 
     def publish_message(self, topic: str, message: str, qos: int):
         if not self.client or not self.connected:
-            raise RuntimeError("Not connected to broker.")
+            raise NotConnectedError("Client is not connected to broker.")
+
+        if not topic or not topic.strip():
+            raise BusinessValidationError("Topic must not be empty.")
 
         self.client.publish(topic, message, qos)
 
@@ -163,7 +203,10 @@ class MonitorService:
 
     def subscribe(self, topic: str, qos: int):
         if not self.client or not self.connected:
-            raise RuntimeError("Not connected to broker.")
+            raise NotConnectedError("Client is not connected to broker.")
+
+        if not topic or not topic.strip():
+            raise BusinessValidationError("Topic must not be empty.")
 
         self.client.subscribe(topic, qos)
 
@@ -180,18 +223,22 @@ class MonitorService:
 
     def unsubscribe(self, topic: str):
         if not self.client or not self.connected:
-            raise RuntimeError("Not connected to broker.")
+            raise NotConnectedError("Client is not connected to broker.")
 
-        old_qos = 0
+        if not topic or not topic.strip():
+            raise BusinessValidationError("Topic must not be empty.")
+
         with self.lock:
-            if topic in self.subscriptions:
-                old_qos = self.subscriptions[topic]
+            if topic not in self.subscriptions:
+                raise SubscriptionNotFoundError(
+                    f"Topic '{topic}' is not currently subscribed."
+                )
+            old_qos = self.subscriptions[topic]
 
         self.client.unsubscribe(topic)
 
         with self.lock:
-            if topic in self.subscriptions:
-                del self.subscriptions[topic]
+            del self.subscriptions[topic]
 
         self._persist_safely(
             "saving unsubscribe event",
@@ -201,12 +248,26 @@ class MonitorService:
             action="UNSUBSCRIBE"
         )
 
-    def start_periodic_publish(self, topic: str, message: str, qos: int, interval: int = 5):
+    def start_periodic_publish(
+        self,
+        topic: str,
+        message: str,
+        qos: int,
+        interval: int = 5
+    ):
         if not self.connected:
-            raise RuntimeError("Not connected to broker.")
+            raise NotConnectedError("Client is not connected to broker.")
+
+        if not topic or not topic.strip():
+            raise BusinessValidationError("Topic must not be empty.")
+
+        if interval <= 0:
+            raise BusinessValidationError("Interval must be greater than 0.")
 
         if self.periodic_publishing:
-            raise RuntimeError("Periodic publishing is already running.")
+            raise PeriodicPublishAlreadyRunningError(
+                "Periodic publishing is already running."
+            )
 
         self.periodic_publishing = True
         threading.Thread(
@@ -224,6 +285,9 @@ class MonitorService:
             time.sleep(interval)
 
     def stop_periodic_publish(self):
+        if not self.periodic_publishing:
+            raise BusinessValidationError("Periodic publishing is not running.")
+
         self.periodic_publishing = False
 
     def get_messages(self, topic: Optional[str] = None, after_id: Optional[int] = None):
@@ -245,7 +309,7 @@ class MonitorService:
                 "periodic_publishing": self.periodic_publishing,
                 "subscriptions": dict(self.subscriptions)
             }
-        
+
     def get_message_history(
         self,
         topic: Optional[str] = None,

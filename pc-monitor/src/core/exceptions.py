@@ -7,7 +7,7 @@ class AppError(Exception):
         super().__init__(message)
 
 
-class ValidationError(AppError):
+class BusinessValidationError(AppError):
     status_code = 400
     error_code = "VALIDATION_ERROR"
 
@@ -40,3 +40,13 @@ class InvalidQoSError(AppError):
 class InvalidTopicError(AppError):
     status_code = 400
     error_code = "INVALID_TOPIC"
+
+
+class ConnectionFailedError(AppError):
+    status_code = 400
+    error_code = "CONNECTION_FAILED"
+
+
+class PublishError(AppError):
+    status_code = 400
+    error_code = "PUBLISH_ERROR"

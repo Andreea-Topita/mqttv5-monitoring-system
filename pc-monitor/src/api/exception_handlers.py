@@ -2,6 +2,7 @@ import logging
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 
 from src.core.exceptions import AppError
 
@@ -18,6 +19,20 @@ def register_exception_handlers(app: FastAPI):
                 "error": {
                     "code": exc.error_code,
                     "message": exc.message
+                }
+            }
+        )
+
+    @app.exception_handler(RequestValidationError)
+    async def request_validation_error_handler(request: Request, exc: RequestValidationError):
+        return JSONResponse(
+            status_code=422,
+            content={
+                "success": False,
+                "error": {
+                    "code": "REQUEST_VALIDATION_ERROR",
+                    "message": "Invalid request payload.",
+                    "details": exc.errors()
                 }
             }
         )
