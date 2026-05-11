@@ -59,7 +59,7 @@ class MonitorService:
             if len(self.received_messages) > 100:
                 self.received_messages.pop(0)
 
-    def _handle_incoming_message(self, topic: str, message: str):
+    def _handle_incoming_message(self, topic: str, message: str, source_client_id: Optional[str] = None):
         self._append_in_memory_message(topic, message)
 
         with self.lock:

@@ -26,6 +26,10 @@ STATUS_QOS = 1
 # la cate secunde se publica valorile
 PUBLISH_INTERVAL = 5
 
+USER_PROPERTIES = {
+    "source_client_id": CLIENT_ID
+}
+
 sensor = TempSensor(gpio_pin=20)
 
 client = MQTTClientPico(
@@ -44,17 +48,17 @@ try:
 
     # la conectare publica online cu retain
     # astfel un subscriber nou vede imediat ultimul status
-    client.publish(TOPIC_STATUS, "online", qos=STATUS_QOS, retain=True)
+    client.publish(TOPIC_STATUS, "online", qos=STATUS_QOS, retain=True, user_properties=USER_PROPERTIES)
 
     while True:
         try:
             temp, hum = sensor.read()
 
             print("Publishing temp:", temp)
-            client.publish(TOPIC_TEMP, str(temp), qos=PUBLISH_QOS, retain=False)
+            client.publish(TOPIC_TEMP, str(temp), qos=PUBLISH_QOS, retain=False, user_properties=USER_PROPERTIES)
 
             print("Publishing hum:", hum)
-            client.publish(TOPIC_HUM, str(hum), qos=PUBLISH_QOS, retain=False)
+            client.publish(TOPIC_HUM, str(hum), qos=PUBLISH_QOS, retain=False, user_properties=USER_PROPERTIES)
 
         except Exception as sensor_error:
             print("Sensor read error:", sensor_error)
@@ -71,7 +75,7 @@ finally:
         if client.connected:
             # la inchidere normala publicam noi offline
             # daca aplicatia moare brusc, brokerul publica will-ul offline
-            client.publish(TOPIC_STATUS, "offline", qos=STATUS_QOS, retain=True)
+            client.publish(TOPIC_STATUS, "offline", qos=STATUS_QOS, retain=True, user_properties=USER_PROPERTIES)
     except:
         pass
 

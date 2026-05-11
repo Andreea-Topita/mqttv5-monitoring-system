@@ -121,16 +121,18 @@ class MQTTClientPico:
 
             return ack
 
-    def publish(self, topic: str, message: str, qos: int = 0, retain: bool = False):
+    def publish(self, topic: str, message: str, qos: int = 0, retain: bool = False, user_properties=None):
         if not self.connected:
             raise RuntimeError("Client not connected")
 
         if qos == 0:
             packet = self.packet_builder.publish_packet(
+                packet = self.packet_builder.publish_packet(
                 topic=topic,
                 message=message,
                 qos=0,
                 retain=retain,
+                user_properties=user_properties,
             )
             self._send_all(packet)
             return
@@ -144,6 +146,7 @@ class MQTTClientPico:
                 qos=1,
                 packet_id=packet_id,
                 retain=retain,
+                user_properties=user_properties,
             )
             self._send_all(packet)
 
@@ -163,6 +166,7 @@ class MQTTClientPico:
                 qos=2,
                 packet_id=packet_id,
                 retain=retain,
+                user_properties=user_properties,
             )
             self._send_all(packet)
 

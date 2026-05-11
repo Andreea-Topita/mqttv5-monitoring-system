@@ -77,25 +77,44 @@ class MQTTClient:
         def parse_publish_packet(packet, qos):
             remaining_length, rl_bytes_count = self._decode_remaining_length(packet, 1)
             current_index = 1 + rl_bytes_count
-            
-            #topicul: lungimea + cont
-            topic_length = (packet[current_index] << 8) | packet[current_index + 1]  #primii 2 octeti: lung topicului
+
+            topic_length = (packet[current_index] << 8) | packet[current_index + 1]
             current_index += 2
-            topic = packet[current_index:current_index + topic_length].decode('utf-8', errors='replace')  #citim topicul
+
+            topic = packet[current_index:current_index + topic_length].decode('utf-8', errors='replace')
             current_index += topic_length
 
-            #Packet Identifier (doar pentru QoS > 0)
             if qos > 0:
                 current_index += 2
 
-            if current_index < len(packet):
-                properties_len = packet[current_index]
-                current_index += 1 + properties_len
+            properties_length, properties_len_bytes = self._decode_varint_from_bytes(packet, current_index)
+            current_index += properties_len_bytes
 
-            #mesajul: partea dupa topic
-            message = packet[current_index:].decode('utf-8', errors='replace')  #restul este mesajul
+            properties_end = current_index + properties_length
+            user_properties = {}
 
-            return topic, message
+            while current_index < properties_end:
+                property_id = packet[current_index]
+                current_index += 1
+
+                if property_id == 0x26:  # User Property
+                    key_length = (packet[current_index] << 8) | packet[current_index + 1]
+                    current_index += 2
+                    key = packet[current_index:current_index + key_length].decode('utf-8', errors='replace')
+                    current_index += key_length
+
+                    value_length = (packet[current_index] << 8) | packet[current_index + 1]
+                    current_index += 2
+                    value = packet[current_index:current_index + value_length].decode('utf-8', errors='replace')
+                    current_index += value_length
+
+                    user_properties[key] = value
+                else:
+                    raise ValueError(f"Unsupported PUBLISH property id: {property_id:#x}")
+
+            message = packet[properties_end:].decode('utf-8', errors='replace')
+
+            return topic, message, user_properties
         
         def extract_packet_id(packet):
             remaining_length, rl_bytes_count = self._decode_remaining_length(packet, 1)
@@ -198,13 +217,14 @@ class MQTTClient:
                         qos = self.decoder.publish_qos(packet)
                         print(f"PUBLISH primit (QoS={qos})\n")
 
-                        topic, message = parse_publish_packet(packet, qos)
+                        topic, message, user_properties = parse_publish_packet(packet, qos)
+                        source_client_id = user_properties.get("source_client_id")
 
                         print(f"Topic: {topic}")
                         print(f"Message: {message}")
 
                         if self.on_message_callback:
-                            self.on_message_callback(topic, message)
+                            self.on_message_callback(topic, message, source_client_id)
 
                         if qos == 1:
                             packet_id = extract_packet_id(packet)
@@ -383,3 +403,27 @@ class MQTTClient:
         self.lw_payload = lw_payload
         self.lw_qos = qos
         self.lw_retain = retain
+
+    def _decode_varint_from_bytes(self, data: bytes, start_index: int):
+        multiplier = 1
+        value = 0
+        consumed = 0
+        index = start_index
+
+        while True:
+            if index >= len(data):
+                raise ValueError("Malformed MQTT variable byte integer")
+
+            encoded_byte = data[index]
+            value += (encoded_byte & 127) * multiplier
+            consumed += 1
+            index += 1
+
+            if (encoded_byte & 128) == 0:
+                break
+
+            multiplier *= 128
+            if multiplier > 128 * 128 * 128:
+                raise ValueError("Malformed MQTT variable byte integer")
+
+        return value, consumed

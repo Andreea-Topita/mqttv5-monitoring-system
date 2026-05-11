@@ -87,6 +87,7 @@ class MQTTPackets:
         packet_id: int = None,
         dup: bool = False,
         retain: bool = False,
+        user_properties=None,
     ) -> bytes:
         if qos not in (0, 1, 2):
             raise ValueError("Invalid QoS")
@@ -109,7 +110,9 @@ class MQTTPackets:
                 raise ValueError("packet_id is required for QoS > 0")
             variable_header.extend(packet_id.to_bytes(2, "big"))
 
-        variable_header.extend(self._encode_varint(0))  # publish properties length = 0
+        properties = self._encode_user_properties(user_properties)
+        variable_header.extend(self._encode_varint(len(properties)))
+        variable_header.extend(properties)
 
         payload = message.encode()
         remaining_length = len(variable_header) + len(payload)
@@ -134,3 +137,16 @@ class MQTTPackets:
 
     def disconnect_packet(self) -> bytes:
         return b"\xE0\x00"
+    
+    def _encode_user_properties(self, user_properties):
+    props = bytearray()
+
+    if not user_properties:
+        return bytes(props)
+
+    for key, value in user_properties.items():
+        props.append(0x26)  # User Property identifier
+        props.extend(self._encode_utf8(str(key)))
+        props.extend(self._encode_utf8(str(value)))
+
+    return bytes(props)
