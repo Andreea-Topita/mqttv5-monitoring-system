@@ -48,6 +48,42 @@ export interface StatusResponse {
   subscriptions: Record<string, number>;
 }
 
+export interface ApiErrorResponse {
+  success: false;
+  error: {
+    code: string;
+    message: string;
+    details?: any;
+  };
+}
+
+export interface MessageHistoryItem {
+  id: number;
+  topic: string;
+  payload: string;
+  qos: number;
+  direction: 'INBOUND' | 'OUTBOUND';
+  source_client_id: string | null;
+  created_at: string | null;
+}
+
+export interface MessageHistoryPagination {
+  page: number;
+  page_size: number;
+  total_items: number;
+  total_pages: number;
+  has_next: boolean;
+  has_previous: boolean;
+}
+
+export interface MessageHistoryResponse {
+  success: boolean;
+  data: {
+    items: MessageHistoryItem[];
+    pagination: MessageHistoryPagination;
+  };
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -105,4 +141,29 @@ export class ApiService {
       { params }
     );
   }
+
+  getMessageHistory(
+    topic?: string,
+    direction?: 'INBOUND' | 'OUTBOUND',
+    page: number = 1,
+    pageSize: number = 20
+  ) {
+    let params = new HttpParams()
+      .set('page', page)
+      .set('page_size', pageSize);
+
+    if (topic) {
+      params = params.set('topic', topic);
+    }
+
+    if (direction) {
+      params = params.set('direction', direction);
+    }
+
+    return this.http.get<MessageHistoryResponse>(
+      `${this.baseUrl}/api/messages/history`,
+      { params }
+    );
+  }
+  
 }

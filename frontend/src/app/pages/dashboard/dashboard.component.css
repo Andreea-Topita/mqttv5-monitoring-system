@@ -276,6 +276,9 @@
   color: #475569;
   font-size: 14px;
   font-weight: 600;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .form-grid {
@@ -471,5 +474,82 @@ select:focus {
   .message-top {
     flex-direction: column;
     align-items: flex-start;
+  }
+  .live-message-label {
+    margin-bottom: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #94a3b8;
+  }
+
+
+  .history-panel {
+    padding-bottom: 20px;
+  }
+
+  .history-filters {
+    margin-bottom: 4px;
+  }
+
+  .history-list {
+    max-height: 520px;
+  }
+
+  .history-item {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .history-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .history-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 0 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+  }
+
+  .history-badge.inbound {
+    background: #ecfeff;
+    color: #155e75;
+    border: 1px solid #bae6fd;
+  }
+
+  .history-badge.outbound {
+    background: #eef2ff;
+    color: #3730a3;
+    border: 1px solid #c7d2fe;
+  }
+
+  .history-detail {
+    font-size: 13px;
+    color: #475569;
+    font-weight: 600;
+  }
+
+  .history-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 20px;
+  }
+
+  .pagination-info {
+    font-size: 14px;
+    color: #475569;
+    font-weight: 600;
   }
 }

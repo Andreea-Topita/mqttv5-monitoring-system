@@ -13,7 +13,8 @@ from src.core.exceptions import (
     ConnectionFailedError,
     NotConnectedError,
     PeriodicPublishAlreadyRunningError,
-    SubscriptionNotFoundError
+    SubscriptionNotFoundError,
+    PeriodicPublishNotRunningError
 )
 
 
@@ -286,7 +287,7 @@ class MonitorService:
 
     def stop_periodic_publish(self):
         if not self.periodic_publishing:
-            raise BusinessValidationError("Periodic publishing is not running.")
+            raise PeriodicPublishNotRunningError("Periodic publishing is not running.")
 
         self.periodic_publishing = False
 

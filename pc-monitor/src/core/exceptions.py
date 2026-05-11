@@ -50,3 +50,7 @@ class ConnectionFailedError(AppError):
 class PublishError(AppError):
     status_code = 400
     error_code = "PUBLISH_ERROR"
+
+class PeriodicPublishNotRunningError(AppError):
+    status_code = 409
+    error_code = "PERIODIC_PUBLISH_NOT_RUNNING"

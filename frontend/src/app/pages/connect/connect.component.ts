@@ -33,6 +33,10 @@ export class ConnectComponent {
     private api: ApiService,
     private router: Router
   ) {}
+  
+  private getErrorMessage(err: any, fallback: string): string {
+    return err?.error?.error?.message || fallback;
+  }
 
   connect() {
     this.errorMessage = '';
@@ -68,7 +72,7 @@ export class ConnectComponent {
             return;
           }
 
-          this.errorMessage = err?.error?.detail || 'Connection failed.';
+          this.errorMessage =this.getErrorMessage(err, 'Connection failed.');
         }
       });
   }

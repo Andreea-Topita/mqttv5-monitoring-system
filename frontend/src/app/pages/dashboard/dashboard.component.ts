@@ -5,12 +5,14 @@ import { Router } from '@angular/router';
 
 import {
   ApiService,
+  MessageHistoryItem,
   MessageItem,
   StatusResponse
 } from '../../services/api.service';
 
 import {
   DASHBOARD_TOPICS,
+  DEFAULT_HISTORY_PAGE_SIZE,
   DEFAULT_PERIODIC_INTERVAL,
   DEFAULT_PUBLISH_MESSAGE,
   DEFAULT_PUBLISH_QOS,
@@ -66,6 +68,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
   infoMessage = '';
   errorMessage = '';
 
+  historyTopic = '';
+  historyDirection: 'INBOUND' | 'OUTBOUND' | '' = '';
+  historyPage = 1;
+  historyPageSize = DEFAULT_HISTORY_PAGE_SIZE;
+
+  historyItems: MessageHistoryItem[] = [];
+  historyTotalPages = 0;
+  historyTotalItems = 0;
+  historyHasNext = false;
+  historyHasPrevious = false;
+  historyLoading = false;
+
   private pollingId: number | null = null;
   private loadingStatus = false;
   private loadingMessages = false;
@@ -78,9 +92,28 @@ export class DashboardComponent implements OnInit, OnDestroy {
     private cdr: ChangeDetectorRef
   ) {}
 
+  private getErrorMessage(err: any, fallback: string): string {
+    return err?.error?.error?.message || fallback;
+  }
+
+  resetHistoryFilters() {
+    this.historyTopic = '';
+    this.historyDirection = '';
+    this.historyPage = 1;
+
+    this.historyItems = [];
+    this.historyTotalPages = 0;
+    this.historyTotalItems = 0;
+    this.historyHasNext = false;
+    this.historyHasPrevious = false;
+
+    this.loadMessageHistory();
+  }
+
   ngOnInit() {
     this.loadStatus();
     this.loadMessages();
+    this.loadMessageHistory();
     this.startPolling();
   }
 
@@ -184,7 +217,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.api.getMessages(undefined, this.lastMessageId).subscribe({
       next: (res: { success: boolean; messages: MessageItem[] }) => {
         if (res.messages.length > 0) {
-          this.messages = [...this.messages, ...res.messages];
+          this.messages = [...this.messages, ...res.messages].slice(-100);
           this.lastMessageId = res.messages[res.messages.length - 1].id;
 
           const nextTelemetry = updateTelemetryState(
@@ -208,6 +241,73 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
+  loadMessageHistory() {
+    if (this.historyLoading) {
+      return;
+    }
+
+    this.historyLoading = true;
+
+    this.api.getMessageHistory(
+      this.historyTopic || undefined,
+      this.historyDirection || undefined,
+      this.historyPage,
+      this.historyPageSize
+    ).subscribe({
+      next: (res) => {
+        this.historyItems = res.data.items;
+        this.historyTotalPages = res.data.pagination.total_pages;
+        this.historyTotalItems = res.data.pagination.total_items;
+        this.historyHasNext = res.data.pagination.has_next;
+        this.historyHasPrevious = res.data.pagination.has_previous;
+        this.syncView();
+      },
+      error: (err: any) => {
+        this.errorMessage = this.getErrorMessage(err, 'History loading failed.');
+        this.syncView();
+      },
+      complete: () => {
+        this.historyLoading = false;
+        this.syncView();
+      }
+    });
+  }
+
+  applyHistoryFilters() {
+    this.historyPage = 1;
+
+    this.historyItems = [];
+    this.historyTotalPages = 0;
+    this.historyTotalItems = 0;
+    this.historyHasNext = false;
+    this.historyHasPrevious = false;
+
+    this.loadMessageHistory();
+  }
+  
+  clearLiveMessages() {
+    this.messages = [];
+    this.lastMessageId = 0;
+    this.syncView();
+  }
+  goToPreviousHistoryPage() {
+    if (!this.historyHasPrevious) {
+      return;
+    }
+
+    this.historyPage--;
+    this.loadMessageHistory();
+  }
+
+  goToNextHistoryPage() {
+    if (!this.historyHasNext) {
+      return;
+    }
+
+    this.historyPage++;
+    this.loadMessageHistory();
+  }
+
   disconnect() {
     this.stopPolling();
     this.clearNotifications();
@@ -219,7 +319,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.router.navigate(['/connect']);
       },
       error: (err: any) => {
-        this.errorMessage = err?.error?.detail || 'Disconnect failed.';
+        this.errorMessage = this.getErrorMessage(err, 'Disconnect failed.');
         this.syncView();
       }
     });
@@ -238,7 +338,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.syncView();
       },
       error: (err: any) => {
-        this.errorMessage = err?.error?.detail || 'Publish failed.';
+        this.errorMessage = this.getErrorMessage(err, 'Publish failed.');
         this.syncView();
       }
     });
@@ -263,7 +363,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.refreshStatusAfterDelay(PERIODIC_STATUS_REFRESH_DELAY_MS);
       },
       error: (err: any) => {
-        this.errorMessage = err?.error?.detail || 'Periodic publish failed.';
+        this.errorMessage = this.getErrorMessage(err, 'Periodic publish failed.');
         this.syncView();
       }
     });
@@ -283,7 +383,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.refreshStatusAfterDelay(PERIODIC_STATUS_REFRESH_DELAY_MS);
       },
       error: (err: any) => {
-        this.errorMessage = err?.error?.detail || 'Stop periodic failed.';
+        this.errorMessage = this.getErrorMessage(err, 'Stop periodic failed.');
         this.syncView();
       }
     });
@@ -318,7 +418,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.refreshStatusAfterDelay(STATUS_REFRESH_DELAY_MS);
       },
       error: (err: any) => {
-        this.errorMessage = err?.error?.detail || 'Subscribe failed.';
+        this.errorMessage = this.getErrorMessage(err, 'Subscribe failed.');
         this.startPolling();
         this.syncView();
       }
@@ -357,7 +457,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.refreshStatusAfterDelay(STATUS_REFRESH_DELAY_MS);
       },
       error: (err: any) => {
-        this.errorMessage = err?.error?.detail || 'Unsubscribe failed.';
+        this.errorMessage = this.getErrorMessage(err, 'Unsubscribe failed.');
         this.startPolling();
         this.syncView();
       }
