@@ -1,25 +1,23 @@
 from fastapi import APIRouter
 
+from src.api.schemas.common import ActionResponse
 from src.api.schemas.publish import PublishMessageRequest, PeriodicPublishRequest
 from src.api.services.monitor_instance import monitor_service
 
 router = APIRouter(prefix="/api/publishing", tags=["publishing"])
 
 
-@router.post("/publish-message")
+@router.post("/publish-message", response_model=ActionResponse)
 def publish_message(payload: PublishMessageRequest):
     monitor_service.publish_message(
         topic=payload.topic,
         message=payload.message,
         qos=payload.qos
     )
-    return {
-        "success": True,
-        "message": "Message published successfully."
-    }
+    return ActionResponse(message="Message published successfully.")
 
 
-@router.post("/start-periodic")
+@router.post("/start-periodic", response_model=ActionResponse)
 def start_periodic(payload: PeriodicPublishRequest):
     monitor_service.start_periodic_publish(
         topic=payload.topic,
@@ -27,16 +25,10 @@ def start_periodic(payload: PeriodicPublishRequest):
         qos=payload.qos,
         interval=payload.interval
     )
-    return {
-        "success": True,
-        "message": "Periodic publish started."
-    }
+    return ActionResponse(message="Periodic publish started.")
 
 
-@router.post("/stop-periodic")
+@router.post("/stop-periodic", response_model=ActionResponse)
 def stop_periodic():
     monitor_service.stop_periodic_publish()
-    return {
-        "success": True,
-        "message": "Periodic publish stopped."
-    }
+    return ActionResponse(message="Periodic publish stopped.")

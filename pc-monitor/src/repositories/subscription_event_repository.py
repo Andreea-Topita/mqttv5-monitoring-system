@@ -1,22 +1,16 @@
-from sqlalchemy.exc import SQLAlchemyError
-
-from src.database.connection import SessionLocal
+from src.database.session_manager import session_scope
 from src.models.subscription_event import SubscriptionEvent
 
 
 class SubscriptionEventRepository:
-    def add_event(self, topic: str, qos: int, action: str) -> None:
-        db = SessionLocal()
-        try:
+    def add_event(self, topic: str, qos: int, action: str) -> SubscriptionEvent:
+        with session_scope() as db:
             item = SubscriptionEvent(
                 topic=topic,
                 qos=qos,
                 action=action
             )
             db.add(item)
-            db.commit()
-        except SQLAlchemyError:
-            db.rollback()
-            raise
-        finally:
-            db.close()
+            db.flush()
+            db.refresh(item)
+            return item

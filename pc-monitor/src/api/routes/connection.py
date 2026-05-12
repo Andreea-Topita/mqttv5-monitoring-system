@@ -1,12 +1,14 @@
 from fastapi import APIRouter
 
+from src.api.schemas.common import ActionResponse
 from src.api.schemas.connection import ConnectRequest
+from src.api.schemas.status import MonitorStatusResponse
 from src.api.services.monitor_instance import monitor_service
 
 router = APIRouter(prefix="/api/connection", tags=["connection"])
 
 
-@router.post("/connect")
+@router.post("/connect", response_model=ActionResponse)
 def connect(payload: ConnectRequest):
     monitor_service.connect(
         broker_address=payload.broker_address,
@@ -19,21 +21,15 @@ def connect(payload: ConnectRequest):
         last_will_qos=payload.last_will_qos,
         last_will_retain=payload.last_will_retain,
     )
-    return {
-        "success": True,
-        "message": "Connected successfully."
-    }
+    return ActionResponse(message="Connected successfully.")
 
 
-@router.post("/disconnect")
+@router.post("/disconnect", response_model=ActionResponse)
 def disconnect():
     monitor_service.disconnect()
-    return {
-        "success": True,
-        "message": "Disconnected successfully."
-    }
+    return ActionResponse(message="Disconnected successfully.")
 
 
-@router.get("/status")
+@router.get("/status", response_model=MonitorStatusResponse)
 def get_status():
-    return monitor_service.get_status()
+    return MonitorStatusResponse(**monitor_service.get_status())

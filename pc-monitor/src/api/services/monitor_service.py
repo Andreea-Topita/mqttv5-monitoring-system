@@ -1,7 +1,7 @@
 import threading
 import time
 from typing import Optional
-
+from src.core.pagination import build_pagination
 from src.client.mqtt_client import MQTTClient
 from src.repositories.connection_event_repository import ConnectionEventRepository
 from src.repositories.subscription_event_repository import SubscriptionEventRepository
@@ -318,9 +318,13 @@ class MonitorService:
         page: int = 1,
         page_size: int = 20
     ):
-        return self.mqtt_message_repository.get_messages_paginated(
+        rows, total_items = self.mqtt_message_repository.get_messages_paginated(
             topic=topic,
             direction=direction,
             page=page,
             page_size=page_size
         )
+
+        pagination = build_pagination(page, page_size, total_items)
+
+        return rows, pagination

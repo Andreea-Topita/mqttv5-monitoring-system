@@ -1,6 +1,4 @@
-from sqlalchemy.exc import SQLAlchemyError
-
-from src.database.connection import SessionLocal
+from src.database.session_manager import session_scope
 from src.models.connection_event import ConnectionEvent
 
 
@@ -11,9 +9,8 @@ class ConnectionEventRepository:
         broker_address: str,
         broker_port: int,
         event_type: str
-    ) -> None:
-        db = SessionLocal()
-        try:
+    ) -> ConnectionEvent:
+        with session_scope() as db:
             item = ConnectionEvent(
                 client_id=client_id,
                 broker_address=broker_address,
@@ -21,9 +18,6 @@ class ConnectionEventRepository:
                 event_type=event_type
             )
             db.add(item)
-            db.commit()
-        except SQLAlchemyError:
-            db.rollback()
-            raise
-        finally:
-            db.close()
+            db.flush()
+            db.refresh(item)
+            return item

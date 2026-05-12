@@ -1,9 +1,8 @@
 from typing import Optional
 
 from sqlalchemy import func, select
-from sqlalchemy.exc import SQLAlchemyError
 
-from src.database.connection import SessionLocal
+from src.database.session_manager import session_scope
 from src.models.mqtt_message import MQTTMessage
 
 
@@ -15,9 +14,8 @@ class MQTTMessageRepository:
         qos: int,
         direction: str,
         source_client_id: Optional[str] = None
-    ) -> None:
-        db = SessionLocal()
-        try:
+    ) -> MQTTMessage:
+        with session_scope() as db:
             item = MQTTMessage(
                 topic=topic,
                 payload=payload,
@@ -26,12 +24,9 @@ class MQTTMessageRepository:
                 source_client_id=source_client_id
             )
             db.add(item)
-            db.commit()
-        except SQLAlchemyError:
-            db.rollback()
-            raise
-        finally:
-            db.close()
+            db.flush()
+            db.refresh(item)
+            return item
 
     def get_messages_paginated(
         self,
@@ -39,9 +34,8 @@ class MQTTMessageRepository:
         direction: Optional[str] = None,
         page: int = 1,
         page_size: int = 20
-    ) -> dict:
-        db = SessionLocal()
-        try:
+    ) -> tuple[list[MQTTMessage], int]:
+        with session_scope() as db:
             filters = []
 
             if topic:
@@ -63,33 +57,6 @@ class MQTTMessageRepository:
             stmt = stmt.order_by(MQTTMessage.id.desc())
             stmt = stmt.offset((page - 1) * page_size).limit(page_size)
 
-            rows = db.execute(stmt).scalars().all()
+            items = db.execute(stmt).scalars().all()
 
-            items = [
-                {
-                    "id": row.id,
-                    "topic": row.topic,
-                    "payload": row.payload,
-                    "qos": row.qos,
-                    "direction": row.direction,
-                    "source_client_id": row.source_client_id,
-                    "created_at": row.created_at.isoformat() if row.created_at else None
-                }
-                for row in rows
-            ]
-
-            total_pages = (total_items + page_size - 1) // page_size if total_items > 0 else 0
-
-            return {
-                "items": items,
-                "pagination": {
-                    "page": page,
-                    "page_size": page_size,
-                    "total_items": total_items,
-                    "total_pages": total_pages,
-                    "has_next": page < total_pages,
-                    "has_previous": page > 1
-                }
-            }
-        finally:
-            db.close()
+            return items, total_items
