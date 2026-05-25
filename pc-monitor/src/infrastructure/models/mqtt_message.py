@@ -1,7 +1,7 @@
 from sqlalchemy import BigInteger, Column, DateTime, Text, TIMESTAMP, String, SmallInteger
 from sqlalchemy.sql import func
 
-from src.database.connection import Base
+from src.infrastructure.database.connection import Base
 
 
 class MQTTMessage(Base):

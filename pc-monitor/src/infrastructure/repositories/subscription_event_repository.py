@@ -1,5 +1,5 @@
-from src.database.session_manager import session_scope
-from src.models.subscription_event import SubscriptionEvent
+from src.infrastructure.database.session_manager import session_scope
+from src.infrastructure.models.subscription_event import SubscriptionEvent
 
 
 class SubscriptionEventRepository:

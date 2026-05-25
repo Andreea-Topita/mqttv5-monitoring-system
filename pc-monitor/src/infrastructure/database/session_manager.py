@@ -1,6 +1,6 @@
 from contextlib import contextmanager
 
-from src.database.connection import SessionLocal
+from src.infrastructure.database.connection import SessionLocal
 
 @contextmanager
 def session_scope():

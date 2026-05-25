@@ -1,5 +1,5 @@
-from src.database.session_manager import session_scope
-from src.models.connection_event import ConnectionEvent
+from src.infrastructure.database.session_manager import session_scope
+from src.infrastructure.models.connection_event import ConnectionEvent
 
 
 class ConnectionEventRepository:

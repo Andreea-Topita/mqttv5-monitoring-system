@@ -2,8 +2,8 @@ from typing import Optional
 
 from sqlalchemy import func, select
 
-from src.database.session_manager import session_scope
-from src.models.mqtt_message import MQTTMessage
+from src.infrastructure.database.session_manager import session_scope
+from src.infrastructure.models.mqtt_message import MQTTMessage
 
 
 class MQTTMessageRepository:
