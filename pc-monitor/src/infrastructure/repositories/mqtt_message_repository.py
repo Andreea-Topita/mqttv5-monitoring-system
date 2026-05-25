@@ -2,11 +2,23 @@ from typing import Optional
 
 from sqlalchemy import func, select
 
+from src.domain.entities.mqtt_message_record import MqttMessageRecord
 from src.infrastructure.database.session_manager import session_scope
 from src.infrastructure.models.mqtt_message import MQTTMessage
 
 
 class MQTTMessageRepository:
+    def _to_record(self, item: MQTTMessage) -> MqttMessageRecord:
+        return MqttMessageRecord(
+            id=item.id,
+            topic=item.topic,
+            payload=item.payload,
+            qos=item.qos,
+            direction=item.direction,
+            source_client_id=item.source_client_id,
+            created_at=item.created_at
+        )
+
     def add_message(
         self,
         topic: str,
@@ -14,7 +26,7 @@ class MQTTMessageRepository:
         qos: int,
         direction: str,
         source_client_id: Optional[str] = None
-    ) -> MQTTMessage:
+    ) -> MqttMessageRecord:
         with session_scope() as db:
             item = MQTTMessage(
                 topic=topic,
@@ -23,10 +35,12 @@ class MQTTMessageRepository:
                 direction=direction,
                 source_client_id=source_client_id
             )
+
             db.add(item)
             db.flush()
             db.refresh(item)
-            return item
+
+            return self._to_record(item)
 
     def get_messages_paginated(
         self,
@@ -34,7 +48,7 @@ class MQTTMessageRepository:
         direction: Optional[str] = None,
         page: int = 1,
         page_size: int = 20
-    ) -> tuple[list[MQTTMessage], int]:
+    ) -> tuple[list[MqttMessageRecord], int]:
         with session_scope() as db:
             filters = []
 
@@ -59,4 +73,9 @@ class MQTTMessageRepository:
 
             items = db.execute(stmt).scalars().all()
 
-            return items, total_items
+            records = [
+                self._to_record(item)
+                for item in items
+            ]
+
+            return records, total_items

@@ -6,12 +6,12 @@ from src.api.schemas.history import (
     MessageHistoryResponse,
     PaginationResponse
 )
-from src.core.pagination import PaginationResult
-from src.models.mqtt_message import MQTTMessage
+from src.application.common.pagination import PaginationResult
+from src.domain.entities.mqtt_message_record import MqttMessageRecord
 
 
 def to_message_history_response(
-    rows: Sequence[MQTTMessage],
+    rows: Sequence[MqttMessageRecord],
     pagination: PaginationResult
 ) -> MessageHistoryResponse:
     items = [

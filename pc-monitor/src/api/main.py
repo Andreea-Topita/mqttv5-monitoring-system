@@ -7,8 +7,8 @@ from src.api.routes.publishing import router as publishing_router
 from src.api.routes.messages import router as messages_router
 
 from src.api.exception_handlers import register_exception_handlers
-from src.database.connection import Base, engine
-import src.models
+from src.infrastructure.database.connection import Base, engine
+import src.infrastructure.models
 
 
 app = FastAPI(title="MQTT Monitoring API")
