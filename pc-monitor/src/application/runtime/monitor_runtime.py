@@ -7,18 +7,18 @@ from src.domain.entities.live_message import LiveMessage
 # starea live a aplicatiei : instanta client mqtt, daca pc e conectat sau nu la broker, daca periodic publish e activ sau nu, mesajele live
 # topicurile la care clientul pc e abonat ( cheie topic, valoare qos )
 class MonitorRuntime:
-    def __init__(self, on_message_callback=None):
+    def __init__(self):
         self.client = None
         self.connected = False
         self.periodic_publishing = False
-        self.external_on_message_callback = on_message_callback
 
         self.received_messages: list[LiveMessage] = []
         self.message_counter = 0
 
         self.subscriptions: dict[str, int] = {}
 
-        # sa nu se modifice lista de msaje sau dictionarul de subscriptii in timp ce sunt accesate din threaduri diferite
+        # sa nu se modifice lista de mesaje sau dictionarul de subscriptii
+        # in timp ce sunt accesate din threaduri diferite
         self.lock = threading.Lock()
 
         self.client_id = ""

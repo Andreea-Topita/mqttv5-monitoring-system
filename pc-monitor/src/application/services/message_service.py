@@ -36,13 +36,6 @@ class MessageService:
             source_client_id=source_client_id
         )
 
-        if self.runtime.external_on_message_callback:
-            self.runtime.external_on_message_callback(
-                topic,
-                message,
-                source_client_id
-            )
-
     def get_live_messages(
         self,
         topic: Optional[str] = None,
