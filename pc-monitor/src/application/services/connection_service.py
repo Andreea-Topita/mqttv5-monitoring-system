@@ -53,7 +53,7 @@ class ConnectionService:
 
         validate_qos(last_will_qos)
 
-        self.runtime.reset_runtime_messages()
+        self.runtime.reset_live_state()
 
         self.runtime.client_id = client_id
         self.runtime.broker_address = broker_address

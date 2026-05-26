@@ -9,7 +9,7 @@ class ConnectionEventRepository:
         broker_address: str,
         broker_port: int,
         event_type: str
-    ) -> ConnectionEvent:
+    ) -> None:
         with session_scope() as db:
             item = ConnectionEvent(
                 client_id=client_id,
@@ -18,6 +18,3 @@ class ConnectionEventRepository:
                 event_type=event_type
             )
             db.add(item)
-            db.flush()
-            db.refresh(item)
-            return item

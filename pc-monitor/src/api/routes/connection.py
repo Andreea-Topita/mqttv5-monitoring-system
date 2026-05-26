@@ -3,7 +3,7 @@ from fastapi import APIRouter
 from src.api.schemas.common import ActionResponse
 from src.api.schemas.connection import ConnectRequest
 from src.api.schemas.status import MonitorStatusResponse
-from src.application.services.service_container import monitor_service
+from src.bootstrap.service_container import monitor_service
 
 router = APIRouter(prefix="/api/connection", tags=["connection"])
 

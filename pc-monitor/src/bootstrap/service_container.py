@@ -14,9 +14,11 @@ from src.infrastructure.repositories.subscription_event_repository import (
     SubscriptionEventRepository
 )
 
-
+# bootstrap = composition root
+# leaga toate componentele intre ele, creeaza instantele si le injecteaza acolo unde e nevoie
 runtime = MonitorRuntime()
 
+# aici creez toate obiectele 
 mqtt_message_repository = MQTTMessageRepository()
 connection_event_repository = ConnectionEventRepository()
 subscription_event_repository = SubscriptionEventRepository()

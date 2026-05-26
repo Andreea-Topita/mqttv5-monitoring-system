@@ -2,7 +2,7 @@ from fastapi import APIRouter
 
 from src.api.schemas.common import ActionResponse
 from src.api.schemas.subscription import SubscribeRequest, UnsubscribeRequest
-from src.application.services.service_container import monitor_service
+from src.bootstrap.service_container import monitor_service
 
 router = APIRouter(prefix="/api/subscription", tags=["subscription"])
 

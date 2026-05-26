@@ -5,7 +5,8 @@ from src.application.services.message_service import MessageService
 from src.application.services.publishing_service import PublishingService
 from src.application.services.subscription_service import SubscriptionService
 
-
+# clasa care ofera o interfata comuna pentru toate serviciile, rutele folosesc doar monitor_service
+# care e o instanta a acestei clase, si nu trebuie sa stie nimic despre celelalte servicii sau runtime
 class MonitorFacade:
     def __init__(
         self,
@@ -19,6 +20,7 @@ class MonitorFacade:
         self.subscription_service = subscription_service
         self.message_service = message_service
 
+    # grupeaza metodele din celelalte servicii, astfel incat rutele sa aiba o interfata unica
     def connect(self, *args, **kwargs):
         return self.connection_service.connect(*args, **kwargs)
 

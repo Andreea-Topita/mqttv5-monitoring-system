@@ -6,7 +6,7 @@ from src.api.mappers.history_mapper import to_message_history_response
 from src.api.mappers.live_messages_mapper import to_live_messages_response
 from src.api.schemas.history import MessageHistoryResponse
 from src.api.schemas.live_messages import LiveMessagesResponse
-from src.application.services.service_container import monitor_service
+from src.bootstrap.service_container import monitor_service
 
 router = APIRouter(prefix="/api/messages", tags=["messages"])
 

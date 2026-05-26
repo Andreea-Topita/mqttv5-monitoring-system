@@ -4,7 +4,8 @@ from typing import Optional
 
 from src.domain.entities.live_message import LiveMessage
 
-
+# starea live a aplicatiei : instanta client mqtt, daca pc e conectat sau nu la broker, daca periodic publish e activ sau nu, mesajele live
+# topicurile la care clientul pc e abonat ( cheie topic, valoare qos )
 class MonitorRuntime:
     def __init__(self, on_message_callback=None):
         self.client = None
@@ -17,18 +18,21 @@ class MonitorRuntime:
 
         self.subscriptions: dict[str, int] = {}
 
+        # sa nu se modifice lista de msaje sau dictionarul de subscriptii in timp ce sunt accesate din threaduri diferite
         self.lock = threading.Lock()
 
         self.client_id = ""
         self.broker_address = ""
         self.broker_port = 1883
 
-    def reset_runtime_messages(self):
+    # cand fac o conexiune noua, ca sa nu pastrez mesajele si subscriptions vechi
+    def reset_live_state(self):
         with self.lock:
             self.received_messages = []
             self.message_counter = 0
             self.subscriptions = {}
 
+    # adaugare mesaj in lista de mesaje live
     def add_live_message(self, topic: str, message: str) -> LiveMessage:
         with self.lock:
             self.message_counter += 1
@@ -42,11 +46,13 @@ class MonitorRuntime:
 
             self.received_messages.append(item)
 
+            # pastrare doar ultimele 100 de mesaje, ca sa nu creasca prea mult memoria folosita
             if len(self.received_messages) > 100:
                 self.received_messages.pop(0)
 
             return item
 
+    # obtine mesajele live, filtrare dupa topic si dupa id
     def get_live_messages(
         self,
         topic: Optional[str] = None,
