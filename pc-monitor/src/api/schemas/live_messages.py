@@ -1,6 +1,7 @@
 from pydantic import BaseModel, ConfigDict
 
 
+#forma trimisa catre frontend 
 class LiveMessageItemResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
