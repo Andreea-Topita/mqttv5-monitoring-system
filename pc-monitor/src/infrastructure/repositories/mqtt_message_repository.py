@@ -4,21 +4,11 @@ from sqlalchemy import func, select
 
 from src.domain.entities.mqtt_message_record import MqttMessageRecord
 from src.infrastructure.database.session_manager import session_scope
+from src.infrastructure.mappers.mqtt_message_mapper import to_mqtt_message_record
 from src.infrastructure.models.mqtt_message import MQTTMessage
 
 
 class MQTTMessageRepository:
-    def _to_record(self, item: MQTTMessage) -> MqttMessageRecord:
-        return MqttMessageRecord(
-            id=item.id,
-            topic=item.topic,
-            payload=item.payload,
-            qos=item.qos,
-            direction=item.direction,
-            source_client_id=item.source_client_id,
-            created_at=item.created_at
-        )
-
     def add_message(
         self,
         topic: str,
@@ -40,7 +30,7 @@ class MQTTMessageRepository:
             db.flush()
             db.refresh(item)
 
-            return self._to_record(item)
+            return to_mqtt_message_record(item)
 
     def get_messages_paginated(
         self,
@@ -74,7 +64,7 @@ class MQTTMessageRepository:
             items = db.execute(stmt).scalars().all()
 
             records = [
-                self._to_record(item)
+                to_mqtt_message_record(item)
                 for item in items
             ]
 

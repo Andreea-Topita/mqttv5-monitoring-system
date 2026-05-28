@@ -5,11 +5,11 @@ from src.api.routes.connection import router as connection_router
 from src.api.routes.subscription import router as subscription_router
 from src.api.routes.publishing import router as publishing_router
 from src.api.routes.messages import router as messages_router
+from src.api.routes.sensor_measurements import router as sensor_measurements_router
 
 from src.api.exception_handlers import register_exception_handlers
 from src.infrastructure.database.connection import Base, engine
 import src.infrastructure.models
-
 
 app = FastAPI(title="MQTT Monitoring API")
 register_exception_handlers(app)
@@ -28,7 +28,7 @@ app.include_router(connection_router)
 app.include_router(subscription_router)
 app.include_router(publishing_router)
 app.include_router(messages_router)
-
+app.include_router(sensor_measurements_router)
 
 @app.get("/")
 def root():

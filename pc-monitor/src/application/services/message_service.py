@@ -3,6 +3,7 @@ from typing import Optional
 from src.application.common.pagination import build_pagination
 from src.application.common.persistence import persist_safely
 from src.application.runtime.monitor_runtime import MonitorRuntime
+from src.application.services.sensor_measurement_service import SensorMeasurementService
 from src.domain.enums.mqtt_direction import MqttDirection
 from src.infrastructure.repositories.mqtt_message_repository import MQTTMessageRepository
 
@@ -11,10 +12,12 @@ class MessageService:
     def __init__(
         self,
         runtime: MonitorRuntime,
-        mqtt_message_repository: MQTTMessageRepository
+        mqtt_message_repository: MQTTMessageRepository,
+        sensor_measurement_service: SensorMeasurementService
     ):
         self.runtime = runtime
         self.mqtt_message_repository = mqtt_message_repository
+        self.sensor_measurement_service = sensor_measurement_service
 
     def handle_incoming_message(
         self,
@@ -26,7 +29,7 @@ class MessageService:
 
         current_qos = self.runtime.get_subscription_qos(topic)
 
-        persist_safely(
+        saved_message = persist_safely(
             "saving inbound mqtt message",
             self.mqtt_message_repository.add_message,
             topic=topic,
@@ -34,6 +37,17 @@ class MessageService:
             qos=current_qos,
             direction=MqttDirection.INBOUND.value,
             source_client_id=source_client_id
+        )
+
+        mqtt_message_id = saved_message.id if saved_message else None
+
+        persist_safely(
+            "saving numeric sensor measurement",
+            self.sensor_measurement_service.handle_possible_sensor_message,
+            topic=topic,
+            payload=message,
+            source_client_id=source_client_id,
+            mqtt_message_id=mqtt_message_id
         )
 
     def get_live_messages(
