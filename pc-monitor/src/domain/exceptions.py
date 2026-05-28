@@ -54,3 +54,17 @@ class PublishError(AppError):
 class PeriodicPublishNotRunningError(AppError):
     status_code = 409
     error_code = "PERIODIC_PUBLISH_NOT_RUNNING"
+
+class UserAlreadyExistsError(AppError):
+    status_code = 409
+    error_code = "USER_ALREADY_EXISTS"
+
+
+class InvalidCredentialsError(AppError):
+    status_code = 401
+    error_code = "INVALID_CREDENTIALS"
+
+
+class UnauthorizedError(AppError):
+    status_code = 401
+    error_code = "UNAUTHORIZED"

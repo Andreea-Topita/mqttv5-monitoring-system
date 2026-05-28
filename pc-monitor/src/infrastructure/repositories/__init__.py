@@ -1,3 +1,5 @@
 from src.infrastructure.repositories.connection_event_repository import ConnectionEventRepository
 from src.infrastructure.repositories.subscription_event_repository import SubscriptionEventRepository
 from src.infrastructure.repositories.mqtt_message_repository import MQTTMessageRepository
+from src.infrastructure.repositories.sensor_measurement_repository import SensorMeasurementRepository
+from src.infrastructure.repositories.user_repository import UserRepository

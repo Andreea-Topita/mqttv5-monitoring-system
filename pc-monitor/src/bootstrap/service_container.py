@@ -19,6 +19,9 @@ from src.infrastructure.repositories.sensor_measurement_repository import (
     SensorMeasurementRepository
 )
 
+from src.application.services.auth_service import AuthService
+from src.infrastructure.repositories.user_repository import UserRepository
+
 # bootstrap = composition root
 # leaga toate componentele intre ele, creeaza instantele si le injecteaza acolo unde e nevoie
 runtime = MonitorRuntime()
@@ -28,9 +31,14 @@ mqtt_message_repository = MQTTMessageRepository()
 connection_event_repository = ConnectionEventRepository()
 subscription_event_repository = SubscriptionEventRepository()
 sensor_measurement_repository = SensorMeasurementRepository()
+user_repository = UserRepository()
 
 sensor_measurement_service = SensorMeasurementService(
     sensor_measurement_repository=sensor_measurement_repository
+)
+
+auth_service = AuthService(
+    user_repository=user_repository
 )
 
 message_service = MessageService(

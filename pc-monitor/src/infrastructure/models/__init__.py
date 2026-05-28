@@ -2,3 +2,4 @@ from src.infrastructure.models.connection_event import ConnectionEvent
 from src.infrastructure.models.mqtt_message import MQTTMessage
 from src.infrastructure.models.subscription_event import SubscriptionEvent
 from src.infrastructure.models.sensor_measurement import SensorMeasurement
+from src.infrastructure.models.user import User
