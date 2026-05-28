@@ -17,6 +17,7 @@ class MQTTClientPico:
         will_payload: str = None,
         will_qos: int = 0,
         will_retain: bool = False,
+        will_user_properties=None,
     ):
         self.broker_ip = broker_ip
         self.broker_port = broker_port
@@ -28,10 +29,7 @@ class MQTTClientPico:
         self.will_payload = will_payload
         self.will_qos = will_qos
         self.will_retain = will_retain
-
-        self.will_user_properties = {
-            "source_client_id": self.client_id
-        }
+        self.will_user_properties = will_user_properties
 
         self.last_activity = time.time()
         self.sock = None

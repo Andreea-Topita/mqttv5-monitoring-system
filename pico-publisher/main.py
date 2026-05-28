@@ -2,6 +2,8 @@ import time
 from wifi import connect_wifi
 from mqtt_client import MQTTClientPico
 from temp_sensor import TempSensor
+import ujson as json
+from time_utils import sync_time, get_unix_time
 
 #parola internet de acasa 
 SSID = "DIGI-5205"
@@ -30,6 +32,30 @@ USER_PROPERTIES = {
     "source_client_id": CLIENT_ID
 }
 
+# numele de baza SenML pentru dispozitiv
+SENML_BASE_NAME = "urn:dev:" + CLIENT_ID + ":"
+
+
+def build_senml_payload(measurement_name: str, unit: str, value) -> str:
+    # Construim payload SenML in format JSON.
+    # bn = base name / identificarea dispozitivului
+    # n  = numele masuratorii
+    # u  = unitatea de masura
+    # v  = valoarea numerica
+    # t  = timestamp Unix
+    senml_record = [
+        {
+            "bn": SENML_BASE_NAME,
+            "n": measurement_name,
+            "u": unit,
+            "v": float(value),
+            "t": get_unix_time()
+        }
+    ]
+
+    return json.dumps(senml_record)
+
+
 sensor = TempSensor(gpio_pin=20)
 
 client = MQTTClientPico(
@@ -41,24 +67,52 @@ client = MQTTClientPico(
     will_payload="offline",
     will_qos=1,
     will_retain=True,
+    will_user_properties=USER_PROPERTIES
 )
+
 try:
+    # connect wifi, apoi incearca sa ia timpul real, apoi se conecteaza la brokerul mqtt 
     connect_wifi(SSID, PASSWORD)
+
+    # sincronizam timpul dupa conectarea la Wi-Fi
+    sync_time()
+
     client.connect()
 
     # la conectare publica online cu retain
-    # astfel un subscriber nou vede imediat ultimul status
-    client.publish(TOPIC_STATUS, "online", qos=STATUS_QOS, retain=True, user_properties=USER_PROPERTIES)
+    # astfel un subscriber nou vede imediat ultima stare cunoscuta
+    client.publish(
+        TOPIC_STATUS,
+        "online",
+        qos=STATUS_QOS,
+        retain=True,
+        user_properties=USER_PROPERTIES
+    )
 
     while True:
         try:
             temp, hum = sensor.read()
 
-            print("Publishing temp:", temp)
-            client.publish(TOPIC_TEMP, str(temp), qos=PUBLISH_QOS, retain=False, user_properties=USER_PROPERTIES)
+            temp_payload = build_senml_payload("temperature", "Cel", temp)
+            hum_payload = build_senml_payload("humidity", "%RH", hum)
 
-            print("Publishing hum:", hum)
-            client.publish(TOPIC_HUM, str(hum), qos=PUBLISH_QOS, retain=False, user_properties=USER_PROPERTIES)
+            print("Publishing temp:", temp_payload)
+            client.publish(
+                TOPIC_TEMP,
+                temp_payload,
+                qos=PUBLISH_QOS,
+                retain=True,
+                user_properties=USER_PROPERTIES
+            )
+
+            print("Publishing hum:", hum_payload)
+            client.publish(
+                TOPIC_HUM,
+                hum_payload,
+                qos=PUBLISH_QOS,
+                retain=True,
+                user_properties=USER_PROPERTIES
+            )
 
         except Exception as sensor_error:
             print("Sensor read error:", sensor_error)
@@ -74,8 +128,14 @@ finally:
     try:
         if client.connected:
             # la inchidere normala publicam noi offline
-            # daca aplicatia moare brusc, brokerul publica will-ul offline
-            client.publish(TOPIC_STATUS, "offline", qos=STATUS_QOS, retain=True, user_properties=USER_PROPERTIES)
+            # daca aplicatia moare brusc, brokerul publica Will-ul offline
+            client.publish(
+                TOPIC_STATUS,
+                "offline",
+                qos=STATUS_QOS,
+                retain=True,
+                user_properties=USER_PROPERTIES
+            )
     except:
         pass
 
