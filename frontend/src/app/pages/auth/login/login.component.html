@@ -1,0 +1,46 @@
+<div class="auth-shell">
+  <div class="auth-card">
+    <p class="eyebrow">MQTT Monitoring System</p>
+
+    <h1>Welcome back</h1>
+
+    <p class="subtitle">
+      Sign in to connect to the MQTT broker, monitor messages and view sensor data.
+    </p>
+
+    <form (ngSubmit)="login()">
+      <div class="field">
+        <label>Username or email</label>
+        <input
+          type="text"
+          name="identifier"
+          [(ngModel)]="identifier"
+          placeholder="example: andreea or email@example.com"
+        />
+      </div>
+
+      <div class="field">
+        <label>Password</label>
+        <input
+          type="password"
+          name="password"
+          [(ngModel)]="password"
+          placeholder="Enter your password"
+        />
+      </div>
+
+      <div *ngIf="errorMessage" class="error-message">
+        {{ errorMessage }}
+      </div>
+
+      <button type="submit" [disabled]="loading">
+        {{ loading ? 'Signing in...' : 'Sign in' }}
+      </button>
+    </form>
+
+    <p class="switch-page">
+      Do not have an account?
+      <a routerLink="/register">Create one</a>
+    </p>
+  </div>
+</div>

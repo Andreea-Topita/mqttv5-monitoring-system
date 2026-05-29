@@ -4,7 +4,10 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { timeout } from 'rxjs';
 
-import { ApiService, ConnectRequest } from '../../services/api.service';
+import { MqttApiService } from '../../core/services/mqtt-api.service';
+import { ConnectRequest } from '../../core/models/mqtt.models';
+import { getApiErrorMessage } from '../../core/utils/api-error.util';
+
 
 @Component({
   selector: 'app-connect',

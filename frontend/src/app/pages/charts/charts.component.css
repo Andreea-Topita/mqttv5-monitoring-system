@@ -1,0 +1,46 @@
+:host {
+  display: block;
+  min-height: 100vh;
+}
+
+.charts-shell {
+  min-height: 100vh;
+  padding: 32px;
+  background:
+    radial-gradient(circle at top left, rgba(99, 102, 241, 0.14), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(71, 85, 105, 0.10), transparent 25%),
+    linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+}
+
+.charts-card {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 30px 32px;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
+}
+
+.eyebrow {
+  margin: 0 0 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 12px;
+  font-weight: 800;
+  color: #4f46e5;
+}
+
+h1 {
+  margin: 0 0 12px;
+  color: #0f172a;
+  font-size: 38px;
+  letter-spacing: -0.03em;
+}
+
+p {
+  margin: 0;
+  color: #475569;
+  font-size: 15px;
+  line-height: 1.7;
+}

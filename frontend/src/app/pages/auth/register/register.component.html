@@ -1,0 +1,66 @@
+<div class="auth-shell">
+  <div class="auth-card">
+    <p class="eyebrow">MQTT Monitoring System</p>
+
+    <h1>Create account</h1>
+
+    <p class="subtitle">
+      Create an account to access the monitoring dashboard and MQTT controls.
+    </p>
+
+    <form (ngSubmit)="register()">
+      <div class="field">
+        <label>Username</label>
+        <input
+          type="text"
+          name="username"
+          [(ngModel)]="username"
+          placeholder="example: andreea"
+        />
+      </div>
+
+      <div class="field">
+        <label>Email</label>
+        <input
+          type="email"
+          name="email"
+          [(ngModel)]="email"
+          placeholder="email@example.com"
+        />
+      </div>
+
+      <div class="field">
+        <label>Password</label>
+        <input
+          type="password"
+          name="password"
+          [(ngModel)]="password"
+          placeholder="At least 6 characters"
+        />
+      </div>
+
+      <div class="field">
+        <label>Confirm password</label>
+        <input
+          type="password"
+          name="confirmPassword"
+          [(ngModel)]="confirmPassword"
+          placeholder="Repeat your password"
+        />
+      </div>
+
+      <div *ngIf="errorMessage" class="error-message">
+        {{ errorMessage }}
+      </div>
+
+      <button type="submit" [disabled]="loading">
+        {{ loading ? 'Creating account...' : 'Create account' }}
+      </button>
+    </form>
+
+    <p class="switch-page">
+      Already have an account?
+      <a routerLink="/login">Sign in</a>
+    </p>
+  </div>
+</div>
