@@ -38,6 +38,9 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: mysql+pymysql://mqtt_user:mqtt_pass123@mysql-db:3306/mqtt_monitoring
+      JWT_SECRET_KEY: mqtt_client_v5_licenta_temperature_monitoring_humidity_monitoring_123123123
+      JWT_ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 120
       PYTHONUNBUFFERED: "1"
     ports:
       - "8000:8000"

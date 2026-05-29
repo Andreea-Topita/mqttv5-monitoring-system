@@ -68,7 +68,10 @@ class SensorMeasurementRepository:
             if filters:
                 stmt = stmt.where(*filters)
 
-            stmt = stmt.order_by(SensorMeasurement.measured_at.desc()).limit(limit)
+            stmt = stmt.order_by(
+                SensorMeasurement.measured_at.desc(),
+                SensorMeasurement.id.desc()
+            ).limit(limit)
 
             items = db.execute(stmt).scalars().all()
 

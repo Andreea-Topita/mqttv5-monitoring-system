@@ -60,6 +60,8 @@ class SensorMeasurementService:
             if not is_valid_sensor_measurement(topic, measurement_name, unit, value):
                 continue
 
+            # daca primesc t invalid, nu vreau sa salvez inregistrarea
+            # dar nici sa opresc procesarea celorlalte inregistrari valide din payload, de aceea prind exceptia doar pentru conversia timestamp-ului
             try:
                 measured_at = datetime.fromtimestamp(
                     timestamp,
