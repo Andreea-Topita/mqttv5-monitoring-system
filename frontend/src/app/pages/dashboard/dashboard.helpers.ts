@@ -1,4 +1,4 @@
-import { MessageItem, StatusResponse } from '../../services/api.service';
+import { MessageItem, StatusResponse } from '../../core/models/mqtt.models';
 
 export interface LatestTelemetryState {
   latestStatus: string;

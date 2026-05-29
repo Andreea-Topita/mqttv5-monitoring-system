@@ -8,7 +8,6 @@ import { MqttApiService } from '../../core/services/mqtt-api.service';
 import { ConnectRequest } from '../../core/models/mqtt.models';
 import { getApiErrorMessage } from '../../core/utils/api-error.util';
 
-
 @Component({
   selector: 'app-connect',
   standalone: true,
@@ -33,13 +32,9 @@ export class ConnectComponent {
   loading = false;
 
   constructor(
-    private api: ApiService,
+    private api: MqttApiService,
     private router: Router
   ) {}
-  
-  private getErrorMessage(err: any, fallback: string): string {
-    return err?.error?.error?.message || fallback;
-  }
 
   connect() {
     this.errorMessage = '';
@@ -75,7 +70,7 @@ export class ConnectComponent {
             return;
           }
 
-          this.errorMessage =this.getErrorMessage(err, 'Connection failed.');
+          this.errorMessage = getApiErrorMessage(err, 'Connection failed.');
         }
       });
   }
