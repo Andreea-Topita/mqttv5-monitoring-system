@@ -3,12 +3,15 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 
+import { MqttApiService } from '../../core/services/mqtt-api.service';
+
 import {
-  ApiService,
   MessageHistoryItem,
   MessageItem,
   StatusResponse
-} from '../../services/api.service';
+} from '../../core/models/mqtt.models';
+
+import { getApiErrorMessage } from '../../core/utils/api-error.util';
 
 import {
   DASHBOARD_TOPICS,
@@ -87,14 +90,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private destroyed = false;
 
   constructor(
-    private api: ApiService,
+    private api: MqttApiService,
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {}
-
-  private getErrorMessage(err: any, fallback: string): string {
-    return err?.error?.error?.message || fallback;
-  }
 
   resetHistoryFilters() {
     this.historyTopic = '';
@@ -263,7 +262,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.syncView();
       },
       error: (err: any) => {
-        this.errorMessage = this.getErrorMessage(err, 'History loading failed.');
+        this.errorMessage = getApiErrorMessage(err, 'History loading failed.');
         this.syncView();
       },
       complete: () => {
@@ -319,7 +318,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.router.navigate(['/connect']);
       },
       error: (err: any) => {
-        this.errorMessage = this.getErrorMessage(err, 'Disconnect failed.');
+        this.errorMessage = getApiErrorMessage(err, 'Disconnect failed.');
         this.syncView();
       }
     });
@@ -338,7 +337,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.syncView();
       },
       error: (err: any) => {
-        this.errorMessage = this.getErrorMessage(err, 'Publish failed.');
+        this.errorMessage = getApiErrorMessage(err, 'Publish failed.');
         this.syncView();
       }
     });
@@ -363,7 +362,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.refreshStatusAfterDelay(PERIODIC_STATUS_REFRESH_DELAY_MS);
       },
       error: (err: any) => {
-        this.errorMessage = this.getErrorMessage(err, 'Periodic publish failed.');
+        this.errorMessage = getApiErrorMessage(err, 'Periodic publish failed.');
         this.syncView();
       }
     });
@@ -383,7 +382,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.refreshStatusAfterDelay(PERIODIC_STATUS_REFRESH_DELAY_MS);
       },
       error: (err: any) => {
-        this.errorMessage = this.getErrorMessage(err, 'Stop periodic failed.');
+        this.errorMessage = getApiErrorMessage(err, 'Stop periodic failed.');
         this.syncView();
       }
     });
@@ -418,7 +417,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.refreshStatusAfterDelay(STATUS_REFRESH_DELAY_MS);
       },
       error: (err: any) => {
-        this.errorMessage = this.getErrorMessage(err, 'Subscribe failed.');
+        this.errorMessage = getApiErrorMessage(err, 'Subscribe failed.');
         this.startPolling();
         this.syncView();
       }
@@ -457,7 +456,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.refreshStatusAfterDelay(STATUS_REFRESH_DELAY_MS);
       },
       error: (err: any) => {
-        this.errorMessage = this.getErrorMessage(err, 'Unsubscribe failed.');
+        this.errorMessage = getApiErrorMessage(err, 'Unsubscribe failed.');
         this.startPolling();
         this.syncView();
       }
