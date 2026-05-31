@@ -1,0 +1,9 @@
+@import '../../styles/dashboard-shared.css';
+
+:host {
+  display: block;
+}
+
+.messages-panel {
+  padding-bottom: 18px;
+}

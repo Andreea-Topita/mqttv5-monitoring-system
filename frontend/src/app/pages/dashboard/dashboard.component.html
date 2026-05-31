@@ -1,30 +1,13 @@
 <div class="dashboard-shell">
   <div class="dashboard-container">
 
-    <header class="topbar">
-      <div class="topbar-left">
-        <p class="eyebrow">MQTT v5 Device Monitoring</p>
-        <h1>Operations Dashboard</h1>
-        <p class="subtitle">
-          Real-time telemetry monitoring, topic subscriptions and message publishing
-          for the Raspberry Pi Pico W environment.
-        </p>
-      </div>
-
-      <div class="topbar-right">
-        <div class="status-chip" [class.connected]="status.connected" [class.disconnected]="!status.connected">
-          <span class="dot"></span>
-          {{ status.connected ? 'Connected' : 'Disconnected' }}
-        </div>
-
-        <div class="status-chip" [class.active-chip]="status.periodic_publishing">
-          <span class="dot"></span>
-          {{ status.periodic_publishing ? 'Periodic publishing active' : 'Periodic publishing inactive' }}
-        </div>
-
-        <button class="danger-btn" (click)="disconnect()">Disconnect</button>
-      </div>
-    </header>
+    <app-dashboard-header
+      [connected]="status.connected"
+      [periodicPublishing]="status.periodic_publishing"
+      (disconnectClicked)="disconnect()"
+      (logoutClicked)="logout()"
+      (chartsClicked)="goToCharts()"
+    ></app-dashboard-header>
 
     <div class="alert success" *ngIf="infoMessage">
       {{ infoMessage }}
@@ -34,277 +17,38 @@
       {{ errorMessage }}
     </div>
 
-    <section class="overview-grid">
-      <div class="metric-card">
-        <div class="metric-label">Pico status</div>
-        <div class="metric-value">{{ latestStatus }}</div>
-        <div class="metric-note">Latest value received from the device status topic.</div>
-      </div>
-
-      <div class="metric-card">
-        <div class="metric-label">Temperature</div>
-        <div class="metric-value">{{ latestTemperature }}</div>
-        <div class="metric-note">Latest telemetry value received from the sensor topic.</div>
-      </div>
-
-      <div class="metric-card">
-        <div class="metric-label">Humidity</div>
-        <div class="metric-value">{{ latestHumidity }}</div>
-        <div class="metric-note">Latest telemetry value received from the sensor topic.</div>
-      </div>
-    </section>
+    <app-telemetry-overview
+      [latestStatus]="latestStatus"
+      [latestTemperature]="latestTemperature"
+      [latestHumidity]="latestHumidity"
+    ></app-telemetry-overview>
 
     <section class="main-grid">
-      <div class="panel">
-        <div class="panel-header">
-          <div>
-            <p class="panel-kicker">Outbound traffic</p>
-            <h2>Publish</h2>
-          </div>
-        </div>
+      <app-publish-panel
+        [topics]="topics"
+        [status]="status"
+        (statusRefreshRequested)="handleStatusRefreshRequested()"
+      ></app-publish-panel>
 
-        <div class="form-grid">
-          <div class="field">
-            <label>Topic</label>
-            <select [(ngModel)]="publishTopic">
-              <option *ngFor="let topic of topics" [value]="topic">{{ topic }}</option>
-            </select>
-          </div>
-
-          <div class="field">
-            <label>QoS</label>
-            <select [(ngModel)]="publishQos">
-              <option [ngValue]="0">0</option>
-              <option [ngValue]="1">1</option>
-              <option [ngValue]="2">2</option>
-            </select>
-          </div>
-
-          <div class="field field-full">
-            <label>Message</label>
-            <input type="text" [(ngModel)]="publishMessage" placeholder="Enter the message to publish" />
-          </div>
-
-          <div class="field">
-            <label>Periodic interval (seconds)</label>
-            <input type="number" [(ngModel)]="periodicInterval" min="1" />
-          </div>
-        </div>
-
-        <div class="button-row">
-          <button class="primary-btn" (click)="publishMessageNow()">Publish now</button>
-          <button class="secondary-btn" (click)="startPeriodicPublishing()">Start periodic</button>
-          <button class="ghost-btn" (click)="stopPeriodicPublishing()">Stop periodic</button>
-        </div>
-      </div>
-
-      <div class="panel">
-        <div class="panel-header">
-          <div>
-            <p class="panel-kicker">Inbound traffic</p>
-            <h2>Subscriptions</h2>
-          </div>
-        </div>
-
-        <div class="form-grid">
-          <div class="field">
-            <label>Topic</label>
-            <select [(ngModel)]="subscribeTopic">
-              <option *ngFor="let topic of topics" [value]="topic">{{ topic }}</option>
-            </select>
-          </div>
-
-          <div class="field">
-            <label>QoS</label>
-            <select [ngModel]="subscribeQos" (ngModelChange)="onSubscribeQosChange($event)">
-              <option [ngValue]="0">0</option>
-              <option [ngValue]="1">1</option>
-              <option [ngValue]="2">2</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="subscription-box">
-          <div class="subscription-status">
-            <span class="subscription-title">Selected topic</span>
-
-            <div class="selected-topic-status" [class.active]="isSelectedTopicSubscribed()">
-              <span class="status-label">Subscription state</span>
-              <strong>{{ isSelectedTopicSubscribed() ? 'Subscribed' : 'Not subscribed' }}</strong>
-              <span *ngIf="isSelectedTopicSubscribed()">Current QoS {{ getSelectedTopicQos() }}</span>
-              <span *ngIf="isSelectedTopicSubscribed() && !isSelectedTopicSubscribedWithSameQos()">
-                Selected QoS {{ subscribeQos }} will update the subscription
-              </span>
-            </div>
-          </div>
-
-          <div class="subscription-list">
-            <span class="subscription-title">Active subscriptions</span>
-
-            <div class="subscription-pill-list" *ngIf="(status.subscriptions | keyvalue).length > 0; else noSubs">
-              <div class="subscription-pill" *ngFor="let sub of status.subscriptions | keyvalue">
-                <span>{{ sub.key }}</span>
-                <strong>QoS {{ sub.value }}</strong>
-              </div>
-            </div>
-
-            <ng-template #noSubs>
-              <p class="empty-text">No active subscriptions yet.</p>
-            </ng-template>
-          </div>
-        </div>
-
-        <div class="button-row">
-          <button
-            class="primary-btn"
-            (click)="subscribeToTopic()"
-            [disabled]="isSelectedTopicSubscribedWithSameQos()">
-            Subscribe
-          </button>
-
-         <button
-          class="ghost-btn"
-          (click)="unsubscribeFromTopic()"
-          [disabled]="!isSelectedTopicSubscribed()">
-          Unsubscribe
-        </button>
-        </div>
-      </div>
+      <app-subscription-panel
+        [topics]="topics"
+        [status]="status"
+        (activeTopicChanged)="setActiveMessageTopic($event)"
+        (subscriptionChanged)="handleSubscriptionChanged($event)"
+      ></app-subscription-panel>
     </section>
 
-    <section class="panel messages-panel">
-      <div class="panel-header">
-        <div>
-          <p class="panel-kicker">Real-time message stream</p>
-          <h2>Live messages</h2>
-        </div>
+    <app-live-messages-panel
+      [status]="status"
+      [activeMessageTopic]="activeMessageTopic"
+      [displayedMessages]="displayedMessages"
+      (activeMessageTopicChange)="setActiveMessageTopic($event)"
+      (clearMessagesClicked)="clearLiveMessages()"
+    ></app-live-messages-panel>
 
-        <div class="messages-meta" *ngIf="activeMessageTopic">
-          <div>Active topic: <strong>{{ activeMessageTopic }}</strong></div>
-          <div>Showing last <strong>{{ displayedMessages.length }}</strong> messages</div>
-        </div>
-      </div>
-
-      <div class="empty-state" *ngIf="!activeMessageTopic">
-        Select a topic and subscribe to display incoming messages.
-      </div>
-
-      <div class="empty-state" *ngIf="activeMessageTopic && displayedMessages.length === 0">
-        Subscription is active, but no new messages have been received yet.
-      </div>
-
-      <div class="message-list" *ngIf="activeMessageTopic && displayedMessages.length > 0">
-        <div class="message-item" *ngFor="let msg of displayedMessages">
-          <div class="message-top">
-            <span class="message-topic">{{ msg.topic }}</span>
-            <span class="message-time">{{ (msg.timestamp * 1000) | date:'HH:mm:ss' }}</span>
-          </div>
-
-          <div class="live-message-label">Payload</div>
-
-          <div class="message-body">
-            {{ msg.message }}
-          </div>
-        </div>
-      </div>
-
-      <div class="button-row" *ngIf="activeMessageTopic && displayedMessages.length > 0">
-        <button class="ghost-btn" (click)="clearLiveMessages()">
-          Clear live messages
-        </button>
-      </div>
-    </section>
-
-    <section class="panel history-panel">
-    <div class="panel-header">
-      <div>
-        <p class="panel-kicker">Persisted records</p>
-        <h2>Message history</h2>
-      </div>
-
-      <div class="messages-meta">
-        Total records: <strong>{{ historyTotalItems }}</strong>
-      </div>
-    </div>
-
-    <div class="form-grid history-filters">
-      <div class="field">
-        <label>Topic</label>
-        <select [(ngModel)]="historyTopic">
-          <option value="">All topics</option>
-          <option *ngFor="let topic of topics" [value]="topic">{{ topic }}</option>
-        </select>
-      </div>
-
-      <div class="field">
-        <label>Direction</label>
-        <select [(ngModel)]="historyDirection">
-          <option value="">All directions</option>
-          <option value="INBOUND">INBOUND</option>
-          <option value="OUTBOUND">OUTBOUND</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="button-row">
-      <button class="primary-btn" (click)="applyHistoryFilters()">
-        Apply filters
-      </button>
-
-      <button class="ghost-btn" (click)="resetHistoryFilters()">
-        Reset filters
-      </button>
-    </div>
-
-    <div class="empty-state" *ngIf="historyLoading">
-      Loading message history...
-    </div>
-
-    <div class="empty-state" *ngIf="!historyLoading && historyItems.length === 0">
-      No stored messages found for the selected filters.
-    </div>
-
-    <div class="message-list history-list" *ngIf="!historyLoading && historyItems.length > 0">
-      <div class="message-item history-item" *ngFor="let item of historyItems">
-        <div class="message-top">
-          <span class="message-topic">{{ item.topic }}</span>
-          <span class="message-time">{{ item.created_at | date:'dd.MM.yyyy HH:mm:ss' }}</span>
-        </div>
-
-        <div class="history-meta">
-          <span class="history-badge" [class.inbound]="item.direction === 'INBOUND'" [class.outbound]="item.direction === 'OUTBOUND'">
-            {{ item.direction }}
-          </span>
-          <span class="history-detail">QoS {{ item.qos }}</span>
-          <span class="history-detail">Source: {{ item.source_client_id || '-' }}</span>
-        </div>
-
-        <div class="message-body">
-          {{ item.payload }}
-        </div>
-      </div>
-    </div>
-
-    <div class="history-pagination" *ngIf="!historyLoading && historyItems.length > 0">
-      <button
-        class="ghost-btn"
-        (click)="goToPreviousHistoryPage()"
-        [disabled]="!historyHasPrevious">
-        Previous
-      </button>
-
-      <div class="pagination-info">
-        Page <strong>{{ historyPage }}</strong> of <strong>{{ historyTotalPages || 1 }}</strong>
-      </div>
-
-      <button
-        class="ghost-btn"
-        (click)="goToNextHistoryPage()"
-        [disabled]="!historyHasNext">
-        Next
-      </button>
-    </div>
-  </section>
+    <app-message-history-panel
+      [topics]="topics"
+    ></app-message-history-panel>
 
   </div>
 </div>

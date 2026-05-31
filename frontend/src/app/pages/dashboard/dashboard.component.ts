@@ -1,64 +1,60 @@
-import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
+import {
+  ChangeDetectorRef,
+  Component,
+  OnDestroy,
+  OnInit
+} from '@angular/core';
+
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 
+import { AuthService } from '../../core/services/auth.service';
 import { MqttApiService } from '../../core/services/mqtt-api.service';
 
 import {
-  MessageHistoryItem,
   MessageItem,
   StatusResponse
 } from '../../core/models/mqtt.models';
 
-import { getApiErrorMessage } from '../../core/utils/api-error.util';
-
 import {
   DASHBOARD_TOPICS,
-  DEFAULT_HISTORY_PAGE_SIZE,
-  DEFAULT_PERIODIC_INTERVAL,
-  DEFAULT_PUBLISH_MESSAGE,
-  DEFAULT_PUBLISH_QOS,
-  DEFAULT_PUBLISH_TOPIC,
-  DEFAULT_SUBSCRIBE_QOS,
-  DEFAULT_SUBSCRIBE_TOPIC,
-  PERIODIC_STATUS_REFRESH_DELAY_MS,
-  POLLING_INTERVAL_MS,
-  STATUS_REFRESH_DELAY_MS,
-  STATUS_SYNC_PAUSE_MS
+  POLLING_INTERVAL_MS 
 } from './dashboard.config';
 
 import {
   LatestTelemetryState,
   createInitialStatus,
   createInitialTelemetryState,
-  getNextActiveTopic,
-  getSubscriptionQos,
-  hasSameSubscriptionQos,
-  isTopicSubscribed,
   normalizeStatus,
   updateTelemetryState
 } from './dashboard.helpers';
 
+import { DashboardHeader } from './components/dashboard-header/dashboard-header';
+import { TelemetryOverview } from './components/telemetry-overview/telemetry-overview';
+import { PublishPanel } from './components/publish-panel/publish-panel';
+import { SubscriptionPanel } from './components/subscription-panel/subscription-panel';
+import { LiveMessagesPanel } from './components/live-messages-panel/live-messages-panel';
+import { MessageHistoryPanel } from './components/message-history-panel/message-history-panel';
+
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [
+    CommonModule,
+    DashboardHeader,
+    TelemetryOverview,
+    PublishPanel,
+    SubscriptionPanel,
+    LiveMessagesPanel,
+    MessageHistoryPanel
+  ],
   templateUrl: './dashboard.component.html',
-  styleUrl: './dashboard.component.css'
+  styleUrl: './dashboard.component.css',
 })
 export class DashboardComponent implements OnInit, OnDestroy {
   topics = DASHBOARD_TOPICS;
 
   status: StatusResponse = createInitialStatus();
-
-  publishTopic = DEFAULT_PUBLISH_TOPIC;
-  publishMessage = DEFAULT_PUBLISH_MESSAGE;
-  publishQos = DEFAULT_PUBLISH_QOS;
-  periodicInterval = DEFAULT_PERIODIC_INTERVAL;
-
-  subscribeTopic = DEFAULT_SUBSCRIBE_TOPIC;
-  subscribeQos = DEFAULT_SUBSCRIBE_QOS;
 
   activeMessageTopic = '';
   messages: MessageItem[] = [];
@@ -71,117 +67,40 @@ export class DashboardComponent implements OnInit, OnDestroy {
   infoMessage = '';
   errorMessage = '';
 
-  historyTopic = '';
-  historyDirection: 'INBOUND' | 'OUTBOUND' | '' = '';
-  historyPage = 1;
-  historyPageSize = DEFAULT_HISTORY_PAGE_SIZE;
-
-  historyItems: MessageHistoryItem[] = [];
-  historyTotalPages = 0;
-  historyTotalItems = 0;
-  historyHasNext = false;
-  historyHasPrevious = false;
-  historyLoading = false;
-
   private pollingId: number | null = null;
   private loadingStatus = false;
   private loadingMessages = false;
-  private pauseStatusSyncUntil = 0;
   private destroyed = false;
 
   constructor(
     private api: MqttApiService,
+    private authService: AuthService,
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {}
 
-  resetHistoryFilters() {
-    this.historyTopic = '';
-    this.historyDirection = '';
-    this.historyPage = 1;
-
-    this.historyItems = [];
-    this.historyTotalPages = 0;
-    this.historyTotalItems = 0;
-    this.historyHasNext = false;
-    this.historyHasPrevious = false;
-
-    this.loadMessageHistory();
-  }
-
-  ngOnInit() {
+  ngOnInit(): void {
     this.loadStatus();
     this.loadMessages();
-    this.loadMessageHistory();
     this.startPolling();
   }
 
-  ngOnDestroy() {
+  ngOnDestroy(): void {
     this.destroyed = true;
     this.stopPolling();
   }
 
-  private syncView() {
-    if (!this.destroyed) {
-      this.cdr.detectChanges();
+  get displayedMessages(): MessageItem[] {
+    if (!this.activeMessageTopic) {
+      return [];
     }
+
+    return this.messages
+      .filter((msg) => msg.topic === this.activeMessageTopic)
+      .slice(-20);
   }
 
-  private stopPolling() {
-    if (this.pollingId !== null) {
-      clearInterval(this.pollingId);
-      this.pollingId = null;
-    }
-  }
-
-  private pauseStatusSync(ms: number) {
-    this.pauseStatusSyncUntil = Date.now() + ms;
-  }
-
-  private refreshStatusAfterDelay(delayMs: number) {
-    window.setTimeout(() => {
-      this.loadStatus();
-    }, delayMs);
-  }
-
-  private syncActiveTopicWithSubscriptions() {
-    this.activeMessageTopic = getNextActiveTopic(
-      this.status.subscriptions,
-      this.subscribeTopic,
-      this.activeMessageTopic
-    );
-  }
-
-  private applyTelemetryState(nextTelemetry: LatestTelemetryState) {
-    this.latestStatus = nextTelemetry.latestStatus;
-    this.latestTemperature = nextTelemetry.latestTemperature;
-    this.latestHumidity = nextTelemetry.latestHumidity;
-  }
-
-  private resetMessagesState() {
-    this.messages = [];
-    this.lastMessageId = 0;
-  }
-
-  private resetDashboardState() {
-    this.status = createInitialStatus();
-    this.activeMessageTopic = '';
-    this.resetMessagesState();
-
-    const telemetry = createInitialTelemetryState();
-    this.applyTelemetryState(telemetry);
-  }
-
-  startPolling() {
-    this.stopPolling();
-
-    this.pollingId = window.setInterval(() => {
-      this.loadStatus();
-      this.loadMessages();
-    }, POLLING_INTERVAL_MS);
-  }
-
-  loadStatus() {
+  loadStatus(): void {
     if (this.loadingStatus) {
       return;
     }
@@ -190,10 +109,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     this.api.getStatus().subscribe({
       next: (res: StatusResponse) => {
-        if (Date.now() < this.pauseStatusSyncUntil) {
-          return;
-        }
-
         this.status = normalizeStatus(res);
         this.syncActiveTopicWithSubscriptions();
         this.syncView();
@@ -206,7 +121,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  loadMessages() {
+  loadMessages(): void {
     if (this.loadingMessages) {
       return;
     }
@@ -240,262 +155,127 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  loadMessageHistory() {
-    if (this.historyLoading) {
-      return;
-    }
-
-    this.historyLoading = true;
-
-    this.api.getMessageHistory(
-      this.historyTopic || undefined,
-      this.historyDirection || undefined,
-      this.historyPage,
-      this.historyPageSize
-    ).subscribe({
-      next: (res) => {
-        this.historyItems = res.data.items;
-        this.historyTotalPages = res.data.pagination.total_pages;
-        this.historyTotalItems = res.data.pagination.total_items;
-        this.historyHasNext = res.data.pagination.has_next;
-        this.historyHasPrevious = res.data.pagination.has_previous;
-        this.syncView();
-      },
-      error: (err: any) => {
-        this.errorMessage = getApiErrorMessage(err, 'History loading failed.');
-        this.syncView();
-      },
-      complete: () => {
-        this.historyLoading = false;
-        this.syncView();
-      }
-    });
-  }
-
-  applyHistoryFilters() {
-    this.historyPage = 1;
-
-    this.historyItems = [];
-    this.historyTotalPages = 0;
-    this.historyTotalItems = 0;
-    this.historyHasNext = false;
-    this.historyHasPrevious = false;
-
-    this.loadMessageHistory();
-  }
-  
-  clearLiveMessages() {
+  clearLiveMessages(): void {
     this.messages = [];
     this.lastMessageId = 0;
     this.syncView();
   }
-  goToPreviousHistoryPage() {
-    if (!this.historyHasPrevious) {
-      return;
-    }
 
-    this.historyPage--;
-    this.loadMessageHistory();
+  setActiveMessageTopic(topic: string): void {
+    this.activeMessageTopic = topic;
+    this.syncView();
   }
 
-  goToNextHistoryPage() {
-    if (!this.historyHasNext) {
-      return;
+  handleSubscriptionChanged(topic: string): void {
+    if (topic) {
+      this.activeMessageTopic = topic;
     }
 
-    this.historyPage++;
-    this.loadMessageHistory();
+    this.clearLiveMessages();
+    this.loadStatus();
+    this.loadMessages();
   }
 
-  disconnect() {
+  handleStatusRefreshRequested(): void {
+    this.loadStatus();
+  }
+
+  disconnect(): void {
     this.stopPolling();
     this.clearNotifications();
 
     this.api.disconnect().subscribe({
       next: () => {
         this.resetDashboardState();
-        this.syncView();
         this.router.navigate(['/connect']);
       },
-      error: (err: any) => {
-        this.errorMessage = getApiErrorMessage(err, 'Disconnect failed.');
+      error: () => {
+        this.errorMessage = 'Disconnect failed.';
         this.syncView();
       }
     });
   }
 
-  publishMessageNow() {
-    this.clearNotifications();
-
-    this.api.publishMessage({
-      topic: this.publishTopic,
-      message: this.publishMessage,
-      qos: this.publishQos
-    }).subscribe({
-      next: () => {
-        this.infoMessage = `Message published to ${this.publishTopic}.`;
-        this.syncView();
-      },
-      error: (err: any) => {
-        this.errorMessage = getApiErrorMessage(err, 'Publish failed.');
-        this.syncView();
-      }
-    });
-  }
-
-  startPeriodicPublishing() {
-    this.clearNotifications();
-
-    this.api.startPeriodic({
-      topic: this.publishTopic,
-      message: this.publishMessage,
-      qos: this.publishQos,
-      interval: this.periodicInterval
-    }).subscribe({
-      next: () => {
-        this.infoMessage = 'Periodic publishing started.';
-        this.status = {
-          ...this.status,
-          periodic_publishing: true
-        };
-        this.syncView();
-        this.refreshStatusAfterDelay(PERIODIC_STATUS_REFRESH_DELAY_MS);
-      },
-      error: (err: any) => {
-        this.errorMessage = getApiErrorMessage(err, 'Periodic publish failed.');
-        this.syncView();
-      }
-    });
-  }
-
-  stopPeriodicPublishing() {
-    this.clearNotifications();
-
-    this.api.stopPeriodic().subscribe({
-      next: () => {
-        this.infoMessage = 'Periodic publishing stopped.';
-        this.status = {
-          ...this.status,
-          periodic_publishing: false
-        };
-        this.syncView();
-        this.refreshStatusAfterDelay(PERIODIC_STATUS_REFRESH_DELAY_MS);
-      },
-      error: (err: any) => {
-        this.errorMessage = getApiErrorMessage(err, 'Stop periodic failed.');
-        this.syncView();
-      }
-    });
-  }
-
-  subscribeToTopic() {
-    this.clearNotifications();
+  logout(): void {
     this.stopPolling();
 
-    const topic = this.subscribeTopic;
-    const qos = Number(this.subscribeQos);
-
-    this.api.subscribe({ topic, qos }).subscribe({
+    this.api.disconnect().subscribe({
       next: () => {
-        this.infoMessage = `Subscribed to ${topic}.`;
-        this.pauseStatusSync(STATUS_SYNC_PAUSE_MS);
-
-        this.status = {
-          ...this.status,
-          subscriptions: {
-            ...this.status.subscriptions,
-            [topic]: qos
-          }
-        };
-
-        this.activeMessageTopic = topic;
-        this.resetMessagesState();
-
-        this.syncView();
-        this.loadMessages();
-        this.startPolling();
-        this.refreshStatusAfterDelay(STATUS_REFRESH_DELAY_MS);
+        this.finishLogout();
       },
-      error: (err: any) => {
-        this.errorMessage = getApiErrorMessage(err, 'Subscribe failed.');
-        this.startPolling();
-        this.syncView();
+      error: () => {
+        this.finishLogout();
       }
     });
   }
 
-  unsubscribeFromTopic() {
-    this.clearNotifications();
+  goToCharts(): void {
+    this.router.navigate(['/charts']);
+  }
+
+  private finishLogout(): void {
+    this.authService.logout();
+    this.resetDashboardState();
+    this.router.navigate(['/login']);
+  }
+
+  private startPolling(): void {
     this.stopPolling();
 
-    const topic = this.subscribeTopic;
-
-    this.api.unsubscribe({ topic }).subscribe({
-      next: () => {
-        this.infoMessage = `Unsubscribed from ${topic}.`;
-        this.pauseStatusSync(STATUS_SYNC_PAUSE_MS);
-
-        const updatedSubscriptions = { ...this.status.subscriptions };
-        delete updatedSubscriptions[topic];
-
-        this.status = {
-          ...this.status,
-          subscriptions: updatedSubscriptions
-        };
-
-        if (this.activeMessageTopic === topic) {
-          this.activeMessageTopic = '';
-        }
-
-        this.resetMessagesState();
-        this.syncActiveTopicWithSubscriptions();
-
-        this.syncView();
-        this.loadMessages();
-        this.startPolling();
-        this.refreshStatusAfterDelay(STATUS_REFRESH_DELAY_MS);
-      },
-      error: (err: any) => {
-        this.errorMessage = getApiErrorMessage(err, 'Unsubscribe failed.');
-        this.startPolling();
-        this.syncView();
-      }
-    });
+    this.pollingId = window.setInterval(() => {
+      this.loadStatus();
+      this.loadMessages();
+    }, POLLING_INTERVAL_MS);
   }
 
-  get displayedMessages(): MessageItem[] {
-    if (!this.activeMessageTopic) {
-      return [];
+  private stopPolling(): void {
+    if (this.pollingId !== null) {
+      clearInterval(this.pollingId);
+      this.pollingId = null;
+    }
+  }
+
+  private syncActiveTopicWithSubscriptions(): void {
+    const subscriptions = this.status.subscriptions ?? {};
+    const subscribedTopics = Object.keys(subscriptions);
+
+    if (
+      this.activeMessageTopic &&
+      subscriptions[this.activeMessageTopic] !== undefined
+    ) {
+      return;
     }
 
-    return this.messages
-      .filter(msg => msg.topic === this.activeMessageTopic)
-      .slice(-20);
+    this.activeMessageTopic = subscribedTopics.length > 0 ? subscribedTopics[0] : '';
   }
 
-  clearNotifications() {
+  private applyTelemetryState(nextTelemetry: LatestTelemetryState): void {
+    this.latestStatus = nextTelemetry.latestStatus;
+    this.latestTemperature = nextTelemetry.latestTemperature;
+    this.latestHumidity = nextTelemetry.latestHumidity;
+  }
+
+  private resetDashboardState(): void {
+    this.status = createInitialStatus();
+    this.activeMessageTopic = '';
+    this.messages = [];
+    this.lastMessageId = 0;
+
+    const telemetry = createInitialTelemetryState();
+    this.applyTelemetryState(telemetry);
+
+    this.clearNotifications();
+    this.syncView();
+  }
+
+  private clearNotifications(): void {
     this.infoMessage = '';
     this.errorMessage = '';
   }
 
-  isSelectedTopicSubscribed(): boolean {
-    return isTopicSubscribed(this.status.subscriptions, this.subscribeTopic);
-  }
-
-  isSelectedTopicSubscribedWithSameQos(): boolean {
-    return hasSameSubscriptionQos(
-      this.status.subscriptions,
-      this.subscribeTopic,
-      this.subscribeQos
-    );
-  }
-
-  getSelectedTopicQos(): number | null {
-    return getSubscriptionQos(this.status.subscriptions, this.subscribeTopic);
-  }
-
-  onSubscribeQosChange(value: any) {
-    this.subscribeQos = Number(value);
-    this.syncView();
+  private syncView(): void {
+    if (!this.destroyed) {
+      this.cdr.detectChanges();
+    }
   }
 }

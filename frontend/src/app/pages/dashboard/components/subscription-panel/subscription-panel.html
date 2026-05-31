@@ -1,0 +1,94 @@
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <p class="panel-kicker">Inbound traffic</p>
+      <h2>Subscriptions</h2>
+    </div>
+  </div>
+
+  <div class="local-alert success" *ngIf="infoMessage">
+    {{ infoMessage }}
+  </div>
+
+  <div class="local-alert error" *ngIf="errorMessage">
+    {{ errorMessage }}
+  </div>
+
+  <div class="form-grid">
+    <div class="field">
+      <label>Topic</label>
+      <select [(ngModel)]="subscribeTopic">
+        <option *ngFor="let topic of topics" [value]="topic">{{ topic }}</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>QoS</label>
+      <select [(ngModel)]="subscribeQos">
+        <option [ngValue]="0">0</option>
+        <option [ngValue]="1">1</option>
+        <option [ngValue]="2">2</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="subscription-box">
+    <div class="subscription-status">
+      <span class="subscription-title">Selected topic</span>
+
+      <div class="selected-topic-status" [class.active]="isSelectedTopicSubscribed()">
+        <span class="status-label">Subscription state</span>
+
+        <strong>
+          {{ isSelectedTopicSubscribed() ? 'Subscribed' : 'Not subscribed' }}
+        </strong>
+
+        <span *ngIf="isSelectedTopicSubscribed()">
+          Current QoS {{ getSelectedTopicQos() }}
+        </span>
+
+        <span *ngIf="isSelectedTopicSubscribed() && !isSelectedTopicSubscribedWithSameQos()">
+          Selected QoS {{ subscribeQos }} will update the subscription
+        </span>
+      </div>
+    </div>
+
+    <div class="subscription-list">
+      <span class="subscription-title">Active subscriptions</span>
+
+      <div
+        class="subscription-pill-list"
+        *ngIf="((status?.subscriptions ?? {}) | keyvalue).length > 0; else noSubs"
+      >
+        <div class="subscription-pill" *ngFor="let sub of (status?.subscriptions ?? {}) | keyvalue">
+          <span>{{ sub.key }}</span>
+          <strong>QoS {{ sub.value }}</strong>
+        </div>
+      </div>
+
+      <ng-template #noSubs>
+        <p class="empty-text">No active subscriptions yet.</p>
+      </ng-template>
+    </div>
+  </div>
+
+  <div class="button-row">
+    <button
+      class="primary-btn"
+      type="button"
+      (click)="subscribeToTopic()"
+      [disabled]="loading || !status?.connected || isSelectedTopicSubscribedWithSameQos()"
+    >
+      Subscribe
+    </button>
+
+    <button
+      class="ghost-btn"
+      type="button"
+      (click)="unsubscribeFromTopic()"
+      [disabled]="loading || !status?.connected || !isSelectedTopicSubscribed()"
+    >
+      Unsubscribe
+    </button>
+  </div>
+</section>

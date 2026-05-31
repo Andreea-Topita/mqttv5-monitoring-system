@@ -1,0 +1,74 @@
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <p class="panel-kicker">Outbound traffic</p>
+      <h2>Publish</h2>
+    </div>
+  </div>
+
+  <div class="local-alert success" *ngIf="infoMessage">
+    {{ infoMessage }}
+  </div>
+
+  <div class="local-alert error" *ngIf="errorMessage">
+    {{ errorMessage }}
+  </div>
+
+  <div class="form-grid">
+    <div class="field">
+      <label>Topic</label>
+      <select [(ngModel)]="publishTopic">
+        <option *ngFor="let topic of topics" [value]="topic">{{ topic }}</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>QoS</label>
+      <select [(ngModel)]="publishQos">
+        <option [ngValue]="0">0</option>
+        <option [ngValue]="1">1</option>
+        <option [ngValue]="2">2</option>
+      </select>
+    </div>
+
+    <div class="field field-full">
+      <label>Message</label>
+      <input
+        type="text"
+        [(ngModel)]="publishMessage"
+        placeholder="Enter the message to publish"
+      />
+    </div>
+
+    <div class="field">
+      <label>Periodic interval (seconds)</label>
+      <input type="number" [(ngModel)]="periodicInterval" min="1" />
+    </div>
+  </div>
+
+  <div class="button-row">
+    <button
+      class="primary-btn"
+      type="button"
+      (click)="publishMessageNow()"
+      [disabled]="loading || !status?.connected">
+      Publish now
+    </button>
+
+    <button
+      class="secondary-btn"
+      type="button"
+      (click)="startPeriodicPublishing()"
+      [disabled]="loading || !status?.connected">
+      Start periodic
+    </button>
+
+    <button
+      class="ghost-btn"
+      type="button"
+      (click)="stopPeriodicPublishing()"
+      [disabled]="loading || !status?.periodic_publishing">
+      Stop periodic
+    </button>
+  </div>
+</section>

@@ -1,0 +1,107 @@
+<section class="panel history-panel">
+  <div class="panel-header">
+    <div>
+      <p class="panel-kicker">Persisted records</p>
+      <h2>Message history</h2>
+    </div>
+
+    <div class="messages-meta">
+      Total records: <strong>{{ historyTotalItems }}</strong>
+    </div>
+  </div>
+
+  <div class="local-alert error" *ngIf="errorMessage">
+    {{ errorMessage }}
+  </div>
+
+  <div class="form-grid history-filters">
+    <div class="field">
+      <label>Topic</label>
+      <select [(ngModel)]="historyTopic">
+        <option value="">All topics</option>
+        <option *ngFor="let topic of topics" [value]="topic">{{ topic }}</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Direction</label>
+      <select [(ngModel)]="historyDirection">
+        <option value="">All directions</option>
+        <option value="INBOUND">INBOUND</option>
+        <option value="OUTBOUND">OUTBOUND</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="button-row">
+    <button class="primary-btn" type="button" [disabled]="loading" (click)="applyHistoryFilters()">
+      Apply filters
+    </button>
+
+    <button class="ghost-btn" type="button" [disabled]="loading" (click)="resetHistoryFilters()">
+      Reset filters
+    </button>
+
+    <button class="ghost-btn" type="button" [disabled]="loading" (click)="loadMessageHistory()">
+      Refresh
+    </button>
+  </div>
+
+  <div class="empty-state" *ngIf="loading">
+    Loading message history...
+  </div>
+
+  <div class="empty-state" *ngIf="!loading && historyItems.length === 0">
+    No stored messages found for the selected filters.
+  </div>
+
+  <div class="message-list history-list" *ngIf="!loading && historyItems.length > 0">
+    <div class="message-item history-item" *ngFor="let item of historyItems">
+      <div class="message-top">
+        <span class="message-topic">{{ item.topic }}</span>
+        <span class="message-time">{{ item.created_at | date:'dd.MM.yyyy HH:mm:ss' }}</span>
+      </div>
+
+      <div class="history-meta">
+        <span
+          class="history-badge"
+          [class.inbound]="item.direction === 'INBOUND'"
+          [class.outbound]="item.direction === 'OUTBOUND'"
+        >
+          {{ item.direction }}
+        </span>
+
+        <span class="history-detail">QoS {{ item.qos }}</span>
+        <span class="history-detail">Source: {{ $any(item).source_client_id || '-' }}</span>
+      </div>
+
+      <div class="message-body">
+        {{ item.payload }}
+      </div>
+    </div>
+  </div>
+
+  <div class="history-pagination" *ngIf="!loading && historyItems.length > 0">
+    <button
+      class="ghost-btn"
+      type="button"
+      (click)="goToPreviousHistoryPage()"
+      [disabled]="!historyHasPrevious"
+    >
+      Previous
+    </button>
+
+    <div class="pagination-info">
+      Page <strong>{{ historyPage }}</strong> of <strong>{{ historyTotalPages || 1 }}</strong>
+    </div>
+
+    <button
+      class="ghost-btn"
+      type="button"
+      (click)="goToNextHistoryPage()"
+      [disabled]="!historyHasNext"
+    >
+      Next
+    </button>
+  </div>
+</section>

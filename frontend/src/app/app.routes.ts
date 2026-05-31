@@ -16,7 +16,6 @@ export const routes: Routes = [
 
   { path: 'connect', component: ConnectComponent, canActivate: [authGuard] },
   { path: 'dashboard', component: DashboardComponent, canActivate: [authGuard] },
-  { path: 'charts', component: ChartsComponent, canActivate: [authGuard] },
-
+  { path: 'charts', canActivate: [authGuard], loadComponent: () => import('./pages/charts/charts.component').then(m => m.ChartsComponent) },
   { path: '**', redirectTo: 'login' }
 ];

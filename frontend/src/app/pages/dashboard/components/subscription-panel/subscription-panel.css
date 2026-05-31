@@ -1,0 +1,69 @@
+@import '../../styles/dashboard-shared.css';
+
+:host {
+  display: block;
+}
+
+.subscription-box {
+  display: grid;
+  gap: 18px;
+  margin-top: 20px;
+}
+
+.subscription-title,
+.status-label {
+  display: block;
+  margin: 0 0 10px;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1.2;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #64748b;
+  font-family: inherit;
+}
+
+.selected-topic-status {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #475569;
+}
+
+.selected-topic-status strong {
+  font-size: 17px;
+  color: #334155;
+  font-family: inherit;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.selected-topic-status.active {
+  border-color: rgba(79, 70, 229, 0.25);
+  background: rgba(224, 231, 255, 0.6);
+}
+
+.subscription-pill-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.subscription-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+  color: #1e3a8a;
+  font-size: 13px;
+  font-weight: 700;
+}

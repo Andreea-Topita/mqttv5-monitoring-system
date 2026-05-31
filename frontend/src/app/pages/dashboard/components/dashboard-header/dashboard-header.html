@@ -1,0 +1,39 @@
+<header class="topbar">
+  <div class="topbar-left">
+    <p class="eyebrow">MQTT v5 Device Monitoring</p>
+    <h1>Operations Dashboard</h1>
+    <p class="subtitle">
+      Real-time telemetry monitoring, topic subscriptions and message publishing
+      for the Raspberry Pi Pico W environment.
+    </p>
+  </div>
+
+  <div class="topbar-right">
+    <div class="status-chip" [class.connected]="connected" [class.disconnected]="!connected">
+      <span class="dot"></span>
+      {{ connected ? 'Connected' : 'Disconnected' }}
+    </div>
+
+    <div class="status-chip" [class.active-chip]="periodicPublishing">
+      <span class="dot"></span>
+      {{ periodicPublishing ? 'Periodic publishing active' : 'Periodic publishing inactive' }}
+    </div>
+
+    <button class="ghost-btn" type="button" (click)="chartsClicked.emit()">
+      Charts
+    </button>
+
+    <button class="ghost-btn" type="button" (click)="logoutClicked.emit()">
+      Logout
+    </button>
+
+    <button
+      class="danger-btn"
+      type="button"
+      (click)="disconnectClicked.emit()"
+      [disabled]="!connected"
+    >
+      Disconnect
+    </button>
+  </div>
+</header>

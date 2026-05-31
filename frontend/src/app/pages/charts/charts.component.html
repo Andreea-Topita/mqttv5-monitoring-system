@@ -1,9 +1,163 @@
 <div class="charts-shell">
-  <div class="charts-card">
-    <p class="eyebrow">Sensor data</p>
-    <h1>Sensor charts</h1>
-    <p>
-      Temperature and humidity charts will be displayed here using the values stored in the database.
-    </p>
+  <div class="charts-container">
+
+    <header class="charts-hero">
+      <div>
+        <p class="eyebrow">Sensor data</p>
+        <h1>Sensor charts</h1>
+        <p class="subtitle">
+          Temperature and humidity values loaded from the MySQL database through the backend API.
+        </p>
+      </div>
+
+      <div class="hero-actions">
+        <button type="button" class="secondary-btn" (click)="goToDashboard()">
+          Back to dashboard
+        </button>
+
+        <button type="button" class="primary-btn" [disabled]="loading" (click)="loadCharts()">
+          {{ loading ? 'Loading...' : 'Refresh charts' }}
+        </button>
+      </div>
+    </header>
+
+    <section class="filters-card">
+      <div class="field">
+        <label>Number of measurements</label>
+        <select [(ngModel)]="limit" (change)="loadCharts()">
+          <option [ngValue]="20">20</option>
+          <option [ngValue]="50">50</option>
+          <option [ngValue]="100">100</option>
+          <option [ngValue]="200">200</option>
+          <option [ngValue]="500">500</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Auto-refresh seconds</label>
+        <input
+          type="number"
+          min="2"
+          [(ngModel)]="refreshSeconds"
+          (change)="onAutoRefreshChanged()"
+        />
+      </div>
+
+      <label class="checkbox-field">
+        <input
+          type="checkbox"
+          [(ngModel)]="autoRefresh"
+          (ngModelChange)="onAutoRefreshChanged()"
+        />
+        <span>Auto-refresh charts</span>
+      </label>
+    </section>
+
+    <div class="alert success" *ngIf="infoMessage && !errorMessage">
+      {{ infoMessage }}
+    </div>
+
+    <div class="alert error" *ngIf="errorMessage">
+      {{ errorMessage }}
+    </div>
+
+    <section class="charts-grid">
+      <article class="chart-card" *ngFor="let chart of charts">
+        <div class="chart-card-header">
+          <div>
+            <p class="chart-kicker">{{ chart.topic }}</p>
+            <h2>{{ chart.title }}</h2>
+            <p>{{ chart.description }}</p>
+          </div>
+
+          <div class="latest-box">
+            <span>Latest value</span>
+            <strong>{{ formatValue(chart.latestValue, chart.unit) }}</strong>
+            <small>{{ chart.latestTime }}</small>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-box">
+            <span>Minimum</span>
+            <strong>{{ formatValue(chart.minValue, chart.unit) }}</strong>
+          </div>
+
+          <div class="stat-box">
+            <span>Maximum</span>
+            <strong>{{ formatValue(chart.maxValue, chart.unit) }}</strong>
+          </div>
+
+          <div class="stat-box">
+            <span>Average</span>
+            <strong>{{ formatValue(chart.averageValue, chart.unit) }}</strong>
+          </div>
+
+          <div class="stat-box">
+            <span>Samples</span>
+            <strong>{{ chart.items.length }}</strong>
+          </div>
+        </div>
+
+        <div class="empty-state" *ngIf="chart.items.length === 0">
+          No stored values found for this topic.
+        </div>
+
+        <div class="chart-wrapper" *ngIf="chart.items.length > 0">
+          <svg
+            class="line-chart"
+            [attr.viewBox]="'0 0 ' + chartWidth + ' ' + chartHeight"
+            preserveAspectRatio="none"
+          >
+            <g class="grid-lines">
+              <line
+                *ngFor="let tick of chart.yTicks"
+                x1="62"
+                [attr.y1]="tick.y"
+                x2="972"
+                [attr.y2]="tick.y"
+              ></line>
+            </g>
+
+            <g class="y-labels">
+              <text
+                *ngFor="let tick of chart.yTicks"
+                x="10"
+                [attr.y]="tick.y + 4"
+              >
+                {{ tick.label }}
+              </text>
+            </g>
+
+            <polyline
+              class="chart-line"
+              fill="none"
+              [attr.points]="chart.polylinePoints"
+            ></polyline>
+
+            <g class="chart-points">
+              <circle
+                *ngFor="let point of chart.points"
+                [attr.cx]="point.x"
+                [attr.cy]="point.y"
+                r="4"
+              ></circle>
+            </g>
+
+            <g class="x-labels">
+              <text
+                *ngFor="let label of chart.xLabels"
+                [attr.x]="label.x"
+                y="288"
+                text-anchor="middle"
+              >
+                {{ label.label }}
+              </text>
+            </g>
+          </svg>
+        </div>
+      </article>
+    </section>
+
   </div>
 </div>

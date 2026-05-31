@@ -46,14 +46,19 @@ export class LoginComponent {
         this.loading = false;
 
         if (err?.status === 0) {
-          this.errorMessage = 'The backend is not responding. Check if the API is running on port 8000.';
+          this.errorMessage = 'The backend API is not reachable. Make sure the server is running on port 8000.';
+          return;
+        }
+
+        if (err?.status === 401) {
+          this.errorMessage = 'Invalid username/email or password.';
           return;
         }
 
         this.errorMessage =
           err?.error?.error?.message ||
           err?.error?.detail ||
-          'Login failed. Please check your credentials.';
+          'Login failed.';
       }
     });
   }
