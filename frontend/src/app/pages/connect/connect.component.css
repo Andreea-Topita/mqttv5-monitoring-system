@@ -201,21 +201,24 @@ select:focus {
 .logout-btn {
   height: 48px;
   padding: 0 20px;
+  border: none;
   border-radius: 16px;
-  border: 1px solid #dbe4ee;
-  background: #ffffff;
-  color: #334155;
+  background: linear-gradient(135deg, #4338ca, #6366f1);
+  color: #ffffff;
   font-size: 14px;
   font-weight: 800;
   cursor: pointer;
   transition: 0.2s ease;
   white-space: nowrap;
+  box-shadow: 0 16px 30px rgba(79, 70, 229, 0.22);
 }
 
 .logout-btn:hover {
-  border-color: #818cf8;
-  color: #4338ca;
   transform: translateY(-1px);
+}
+
+.logout-btn:active {
+  transform: translateY(0);
 }
 
 .error-message {
