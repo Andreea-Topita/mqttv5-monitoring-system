@@ -1,4 +1,5 @@
 import { MessageItem, StatusResponse } from '../../core/models/mqtt.models';
+import { formatTelemetryValue } from '../../core/utils/mqtt-message-display.util';
 
 export interface LatestTelemetryState {
   latestStatus: string;
@@ -38,15 +39,15 @@ export function updateTelemetryState(
 
   for (const msg of newMessages) {
     if (msg.topic === 'licenta/pico/status') {
-      next.latestStatus = msg.message;
+      next.latestStatus = formatTelemetryValue(msg.topic, msg.message);
     }
 
     if (msg.topic === 'licenta/pico/temperatura') {
-      next.latestTemperature = msg.message;
+      next.latestTemperature = formatTelemetryValue(msg.topic, msg.message);
     }
 
     if (msg.topic === 'licenta/pico/umiditate') {
-      next.latestHumidity = msg.message;
+      next.latestHumidity = formatTelemetryValue(msg.topic, msg.message);
     }
   }
 

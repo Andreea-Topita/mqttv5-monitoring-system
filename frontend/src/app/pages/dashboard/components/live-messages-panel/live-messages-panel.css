@@ -7,3 +7,30 @@
 .messages-panel {
   padding-bottom: 18px;
 }
+
+.formatted-message {
+  display: grid;
+  gap: 10px;
+}
+
+.formatted-value {
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.message-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.message-details span {
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #4338ca;
+}

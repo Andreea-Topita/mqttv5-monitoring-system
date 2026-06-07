@@ -1,6 +1,7 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { formatMqttPayload } from '../../../../core/utils/mqtt-message-display.util';
 
 import {
   MessageItem,
@@ -29,7 +30,11 @@ export class LiveMessagesPanel {
   setActiveTopic(topic: string): void {
     this.activeMessageTopicChange.emit(topic);
   }
-
+  
+  formatMessage(msg: MessageItem) {
+    return formatMqttPayload(msg.topic, msg.message, msg.timestamp);
+  }
+  
   formatTimestamp(timestamp: number): string {
     if (!timestamp) {
       return '-';

@@ -8,6 +8,8 @@ import { MqttApiService } from '../../core/services/mqtt-api.service';
 import { ConnectRequest } from '../../core/models/mqtt.models';
 import { getApiErrorMessage } from '../../core/utils/api-error.util';
 
+import { AuthService } from '../../core/services/auth.service';
+
 @Component({
   selector: 'app-connect',
   standalone: true,

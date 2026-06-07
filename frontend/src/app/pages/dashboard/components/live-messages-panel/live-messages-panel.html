@@ -21,16 +21,39 @@
 
   <div class="message-list" *ngIf="activeMessageTopic && displayedMessages.length > 0">
     <div class="message-item" *ngFor="let msg of displayedMessages">
-      <div class="message-top">
-        <span class="message-topic">{{ msg.topic }}</span>
-        <span class="message-time">{{ (msg.timestamp * 1000) | date:'HH:mm:ss' }}</span>
-      </div>
+      <ng-container *ngIf="formatMessage(msg) as formatted">
+        <div class="message-top">
+          <span class="message-topic">{{ msg.topic }}</span>
+          <span class="message-time">{{ (msg.timestamp * 1000) | date:'HH:mm:ss' }}</span>
+        </div>
 
-      <div class="live-message-label">Payload</div>
+        <div class="live-message-label">
+          {{ formatted.label }}
+        </div>
 
-      <div class="message-body">
-        {{ msg.message }}
-      </div>
+        <div
+          class="message-body"
+          [class.formatted-message]="formatted.isFormatted"
+        >
+          <div class="formatted-value" *ngIf="formatted.isFormatted">
+            {{ formatted.label }}: {{ formatted.valueText }}
+          </div>
+
+          <div class="message-details" *ngIf="formatted.isFormatted">
+            <span *ngIf="formatted.device">
+              Device: {{ formatted.device }}
+            </span>
+
+            <span *ngIf="formatted.measuredAt">
+              Time: {{ formatted.measuredAt }}
+            </span>
+          </div>
+
+          <div *ngIf="!formatted.isFormatted">
+            {{ formatted.valueText }}
+          </div>
+        </div>
+      </ng-container>
     </div>
   </div>
 
