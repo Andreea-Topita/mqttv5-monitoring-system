@@ -39,6 +39,10 @@
 
 .hero-card {
   padding: 30px 32px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
 }
 
 .hero-text h1 {
@@ -194,6 +198,26 @@ select:focus {
   cursor: not-allowed;
 }
 
+.logout-btn {
+  height: 48px;
+  padding: 0 20px;
+  border-radius: 16px;
+  border: 1px solid #dbe4ee;
+  background: #ffffff;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: 0.2s ease;
+  white-space: nowrap;
+}
+
+.logout-btn:hover {
+  border-color: #818cf8;
+  color: #4338ca;
+  transform: translateY(-1px);
+}
+
 .error-message {
   margin: 0 0 18px;
   padding: 13px 15px;
@@ -222,6 +246,15 @@ select:focus {
   .hero-card {
     padding: 22px;
   }
+  
+
+  .hero-card {
+    flex-direction: column;
+  }
+
+  .logout-btn {
+    width: 100%;
+  }
 }
 
 @media (max-width: 640px) {
@@ -242,3 +275,4 @@ select:focus {
     font-size: 20px;
   }
 }
+

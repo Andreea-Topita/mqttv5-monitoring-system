@@ -5,10 +5,9 @@ import { Router } from '@angular/router';
 import { timeout } from 'rxjs';
 
 import { MqttApiService } from '../../core/services/mqtt-api.service';
+import { AuthService } from '../../core/services/auth.service';
 import { ConnectRequest } from '../../core/models/mqtt.models';
 import { getApiErrorMessage } from '../../core/utils/api-error.util';
-
-import { AuthService } from '../../core/services/auth.service';
 
 @Component({
   selector: 'app-connect',
@@ -35,6 +34,7 @@ export class ConnectComponent {
 
   constructor(
     private api: MqttApiService,
+    private authService: AuthService,
     private router: Router
   ) {}
 
@@ -75,5 +75,9 @@ export class ConnectComponent {
           this.errorMessage = getApiErrorMessage(err, 'Connection failed.');
         }
       });
+  }
+  logout(): void {
+    this.authService.logout();
+    this.router.navigate(['/login']);
   }
 }
