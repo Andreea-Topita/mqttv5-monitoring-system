@@ -33,16 +33,16 @@
     </div>
   </div>
 
-  <div class="button-row">
-    <button class="primary-btn" type="button" [disabled]="loading" (click)="applyHistoryFilters()">
+  <div class="button-row history-actions">
+    <button class="primary-btn history-action-btn" type="button" [disabled]="loading" (click)="applyHistoryFilters()">
       Apply filters
     </button>
 
-    <button class="ghost-btn" type="button" [disabled]="loading" (click)="resetHistoryFilters()">
+    <button class="primary-btn history-action-btn" type="button" [disabled]="loading" (click)="resetHistoryFilters()">
       Reset filters
     </button>
 
-    <button class="ghost-btn" type="button" [disabled]="loading" (click)="loadMessageHistory()">
+    <button class="primary-btn history-action-btn" type="button" [disabled]="loading" (click)="loadMessageHistory()">
       Refresh
     </button>
   </div>

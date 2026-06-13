@@ -56,6 +56,8 @@ export class MessageHistoryPanel implements OnInit {
     ).subscribe({
       next: (res) => {
         this.historyItems = res.data.items;
+        this.expandedRawPayloadIds.clear();
+
         this.historyTotalPages = res.data.pagination.total_pages;
         this.historyTotalItems = res.data.pagination.total_items;
         this.historyHasNext = res.data.pagination.has_next;
