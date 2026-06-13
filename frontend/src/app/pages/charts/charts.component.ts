@@ -1,8 +1,8 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { forkJoin, finalize, Subscription, timeout } from 'rxjs';
+import { forkJoin, Subscription, timeout } from 'rxjs';
 
 import { SensorMeasurementApiService } from '../../core/services/sensor-measurement.api.service';
 import { SensorMeasurementItem } from '../../core/models/sensor-measurement.models';
@@ -76,7 +76,8 @@ export class ChartsComponent implements OnInit, OnDestroy {
 
   constructor(
     private sensorApi: SensorMeasurementApiService,
-    private router: Router
+    private router: Router,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -101,19 +102,19 @@ export class ChartsComponent implements OnInit, OnDestroy {
   }
 
   loadCharts(): void {
+    if (this.loading) {
+      return;
+    }
+
     this.requestVersion++;
     const currentRequest = this.requestVersion;
-
-    if (this.chartsRequest) {
-      this.chartsRequest.unsubscribe();
-      this.chartsRequest = null;
-    }
 
     const hadCharts = this.charts.length > 0;
 
     this.loading = true;
     this.errorMessage = '';
     this.infoMessage = '';
+    this.cdr.detectChanges();
 
     this.chartsRequest = forkJoin({
       temperature: this.sensorApi.getMeasurements(
@@ -129,16 +130,13 @@ export class ChartsComponent implements OnInit, OnDestroy {
         Number(this.limit)
       )
     })
-      .pipe(
-        timeout(10000),
-        finalize(() => {
-          if (currentRequest === this.requestVersion) {
-            this.loading = false;
-          }
-        })
-      )
+      .pipe(timeout(4000))
       .subscribe({
         next: (res) => {
+          if (currentRequest !== this.requestVersion) {
+            return;
+          }
+
           const temperatureChart = this.buildChart(
             'Temperature',
             'Values received from the Pico temperature topic and stored in MySQL.',
@@ -167,12 +165,29 @@ export class ChartsComponent implements OnInit, OnDestroy {
               ? 'Charts refreshed from database.'
               : 'Charts loaded from database.';
           }
+
+          this.loading = false;
+          this.chartsRequest = null;
+          this.cdr.detectChanges();
         },
         error: (err) => {
-          this.errorMessage = getApiErrorMessage(
-            err,
-            'Could not load sensor measurements.'
-          );
+          if (currentRequest !== this.requestVersion) {
+            return;
+          }
+
+          if (err?.name === 'TimeoutError') {
+            this.errorMessage = 'Charts loading took too long. Please try again.';
+          } else {
+            this.errorMessage = getApiErrorMessage(
+              err,
+              'Could not load sensor measurements.'
+            );
+          }
+
+          this.infoMessage = '';
+          this.loading = false;
+          this.chartsRequest = null;
+          this.cdr.detectChanges();
         }
       });
   }

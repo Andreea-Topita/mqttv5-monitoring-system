@@ -53,9 +53,8 @@
       </label>
     </section>
 
-    <div class="charts-status" *ngIf="lastUpdated || isRefreshing">
-      <span *ngIf="isRefreshing">Refreshing charts...</span>
-      <span *ngIf="lastUpdated">Last updated: {{ lastUpdated }}</span>
+    <div class="charts-status" *ngIf="lastUpdated">
+      <span>Last updated: {{ lastUpdated }}</span>
     </div>
 
     <div class="alert success" *ngIf="infoMessage && !errorMessage">
