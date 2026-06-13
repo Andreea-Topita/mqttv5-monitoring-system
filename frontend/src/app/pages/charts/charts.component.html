@@ -16,7 +16,7 @@
         </button>
 
         <button type="button" class="primary-btn" [disabled]="loading" (click)="loadCharts()">
-          {{ loading ? 'Loading...' : 'Refresh charts' }}
+          {{ isInitialLoading ? 'Loading charts...' : isRefreshing ? 'Refreshing charts...' : 'Refresh charts' }}
         </button>
       </div>
     </header>
@@ -53,6 +53,11 @@
       </label>
     </section>
 
+    <div class="charts-status" *ngIf="lastUpdated || isRefreshing">
+      <span *ngIf="isRefreshing">Refreshing charts...</span>
+      <span *ngIf="lastUpdated">Last updated: {{ lastUpdated }}</span>
+    </div>
+
     <div class="alert success" *ngIf="infoMessage && !errorMessage">
       {{ infoMessage }}
     </div>
@@ -61,7 +66,11 @@
       {{ errorMessage }}
     </div>
 
-    <section class="charts-grid">
+    <div class="empty-state page-loading" *ngIf="isInitialLoading">
+      Loading charts...
+    </div>
+
+    <section class="charts-grid" *ngIf="!isInitialLoading">
       <article class="chart-card" *ngFor="let chart of charts">
         <div class="chart-card-header">
           <div>

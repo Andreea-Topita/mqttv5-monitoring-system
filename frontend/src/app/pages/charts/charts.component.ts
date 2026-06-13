@@ -66,6 +66,7 @@ export class ChartsComponent implements OnInit, OnDestroy {
   loading = false;
   errorMessage = '';
   infoMessage = '';
+  lastUpdated = '';
 
   charts: SensorChartData[] = [];
 
@@ -91,6 +92,14 @@ export class ChartsComponent implements OnInit, OnDestroy {
     }
   }
 
+  get isInitialLoading(): boolean {
+    return this.loading && this.charts.length === 0;
+  }
+
+  get isRefreshing(): boolean {
+    return this.loading && this.charts.length > 0;
+  }
+
   loadCharts(): void {
     this.requestVersion++;
     const currentRequest = this.requestVersion;
@@ -99,6 +108,8 @@ export class ChartsComponent implements OnInit, OnDestroy {
       this.chartsRequest.unsubscribe();
       this.chartsRequest = null;
     }
+
+    const hadCharts = this.charts.length > 0;
 
     this.loading = true;
     this.errorMessage = '';
@@ -147,10 +158,14 @@ export class ChartsComponent implements OnInit, OnDestroy {
           const totalItems =
             res.temperature.data.length + res.humidity.data.length;
 
+          this.lastUpdated = this.formatCurrentTime();
+
           if (totalItems === 0) {
             this.infoMessage = 'No sensor measurements found in database.';
           } else {
-            this.infoMessage = 'Charts loaded from database.';
+            this.infoMessage = hadCharts
+              ? 'Charts refreshed from database.'
+              : 'Charts loaded from database.';
           }
         },
         error: (err) => {
@@ -385,6 +400,14 @@ export class ChartsComponent implements OnInit, OnDestroy {
     return date.toLocaleTimeString('ro-RO', {
       hour: '2-digit',
       minute: '2-digit'
+    });
+  }
+
+  private formatCurrentTime(): string {
+    return new Date().toLocaleTimeString('ro-RO', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
     });
   }
 }
