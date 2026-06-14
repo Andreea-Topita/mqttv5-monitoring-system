@@ -18,7 +18,7 @@ import { getApiErrorMessage } from '../../core/utils/api-error.util';
 })
 export class ConnectComponent {
   form: ConnectRequest = {
-    broker_address: '192.168.100.18',
+    broker_address: 'mosquitto',
     broker_port: 1883,
     client_id: 'pc_monitor_01',
     username: '',
