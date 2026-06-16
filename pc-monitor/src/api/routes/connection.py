@@ -29,7 +29,6 @@ def disconnect():
     monitor_service.disconnect()
     return ActionResponse(message="Disconnected successfully.")
 
-
 @router.get("/status", response_model=MonitorStatusResponse)
 def get_status():
-    return MonitorStatusResponse(**monitor_service.get_status())
+    return monitor_service.get_status()

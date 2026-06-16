@@ -2,6 +2,7 @@ from typing import Optional
 
 from pydantic import BaseModel
 
+
 class DeviceTopicsResponse(BaseModel):
     status: str
     temperatura: str
@@ -22,8 +23,3 @@ class MonitorStatusResponse(BaseModel):
     periodic_publishing: bool
     subscriptions: dict[str, int]
     devices: list[DeviceStatusResponse] = []
-
-class MonitorStatusResponse(BaseModel):
-    connected: bool
-    periodic_publishing: bool
-    subscriptions: dict[str, int]
