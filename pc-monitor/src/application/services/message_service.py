@@ -26,6 +26,12 @@ class MessageService:
         source_client_id: Optional[str] = None
     ):
         self.runtime.add_live_message(topic, message)
+        
+        self.runtime.update_device_from_message(
+            topic=topic,
+            message=message,
+            source_client_id=source_client_id
+        )
 
         current_qos = self.runtime.get_subscription_qos(topic)
 

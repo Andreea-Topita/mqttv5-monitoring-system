@@ -1,5 +1,9 @@
 from src.application.common.persistence import persist_safely
-from src.application.common.validators import validate_qos, validate_topic
+from src.application.common.validators import (
+    DEFAULT_DEVICE_SUBSCRIPTIONS,
+    validate_qos,
+    validate_topic
+)
 from src.application.runtime.monitor_runtime import MonitorRuntime
 from src.domain.enums.connection_event_type import ConnectionEventType
 from src.domain.exceptions import (
@@ -81,6 +85,17 @@ class ConnectionService:
 
             self.runtime.connected = True
 
+            for topic_filter, qos in DEFAULT_DEVICE_SUBSCRIPTIONS.items():
+                try:
+                    self.runtime.client.subscribe(topic_filter, qos)
+                    self.runtime.set_subscription(topic_filter, qos)
+                    print(f"Auto-subscribed to {topic_filter} with QoS {qos}.")
+                except Exception as subscribe_error:
+                    print(
+                        f"Could not auto-subscribe to {topic_filter}: "
+                        f"{subscribe_error}"
+                    )
+
         except Exception as e:
             self.runtime.client = None
             self.runtime.connected = False
@@ -120,5 +135,9 @@ class ConnectionService:
         return {
             "connected": self.runtime.connected,
             "periodic_publishing": self.runtime.periodic_publishing,
-            "subscriptions": self.runtime.get_subscriptions_copy()
+            "subscriptions": self.runtime.get_subscriptions_copy(),
+            "devices": self.runtime.get_devices_copy()
         }
+
+    def get_devices(self):
+        return self.runtime.get_devices_copy()

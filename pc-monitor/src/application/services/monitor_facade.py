@@ -33,9 +33,15 @@ class MonitorFacade:
 
     def get_status(self):
         return self.connection_service.get_status()
+    
+    def get_devices(self):
+        return self.connection_service.get_devices()
 
     def publish_message(self, *args, **kwargs):
         return self.publishing_service.publish_message(*args, **kwargs)
+    
+    def configure_device(self, *args, **kwargs):
+        return self.publishing_service.configure_device(*args, **kwargs)
 
     def start_periodic_publish(self, *args, **kwargs):
         return self.publishing_service.start_periodic_publish(*args, **kwargs)

@@ -1,8 +1,11 @@
+import json
 import threading
 import time
 
 from src.application.common.persistence import persist_safely
 from src.application.common.validators import (
+    build_device_config_topic,
+    validate_device_client_id,
     validate_interval,
     validate_qos,
     validate_topic
@@ -46,6 +49,44 @@ class PublishingService:
             direction=MqttDirection.OUTBOUND.value,
             source_client_id=self.runtime.client_id
         )
+
+    def configure_device(
+        self,
+        client_id: str,
+        publish_qos: int,
+        publish_interval: int,
+        message_qos: int = 0
+    ):
+        if not self.runtime.client or not self.runtime.connected:
+            raise NotConnectedError("Client is not connected to broker.")
+
+        validate_device_client_id(client_id)
+        validate_qos(publish_qos)
+        validate_interval(publish_interval)
+        validate_qos(message_qos)
+
+        topic = build_device_config_topic(client_id)
+
+        message = json.dumps(
+            {
+                "publish_qos": publish_qos,
+                "publish_interval": publish_interval
+            },
+            separators=(",", ":")
+        )
+
+        self.publish_message(
+            topic=topic,
+            message=message,
+            qos=message_qos
+        )
+
+        self.runtime.register_device(client_id)
+
+        return {
+            "topic": topic,
+            "message": message
+        }
 
     def start_periodic_publish(
         self,
