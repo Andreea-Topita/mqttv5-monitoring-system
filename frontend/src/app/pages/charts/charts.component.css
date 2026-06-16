@@ -75,7 +75,7 @@ h1 {
 .filters-card {
   padding: 22px;
   display: grid;
-  grid-template-columns: 1fr 1fr auto;
+  grid-template-columns: 1.2fr 1.2fr 1fr 1fr auto;
   gap: 18px;
   align-items: end;
 }

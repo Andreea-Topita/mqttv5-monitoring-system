@@ -52,7 +52,7 @@
         <label>Device</label>
         <select [(ngModel)]="selectedClientId">
           <option *ngFor="let device of devices" [value]="device.client_id">
-            {{ device.client_id }} — {{ device.status }}
+            {{ device.client_id }} - {{ device.status }}
           </option>
         </select>
       </div>
@@ -70,7 +70,7 @@
         <label>Publish interval (seconds)</label>
         <input type="number" min="1" [(ngModel)]="publishInterval" />
       </div>
-      
+
     </div>
 
     <div class="config-topic-box" *ngIf="selectedDevice">

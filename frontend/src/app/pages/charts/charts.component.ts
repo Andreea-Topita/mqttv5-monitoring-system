@@ -2,10 +2,15 @@ import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { forkJoin, Subscription, timeout } from 'rxjs';
+import { forkJoin, of, Subscription, switchMap, timeout } from 'rxjs';
 
+import { MqttApiService } from '../../core/services/mqtt-api.service';
 import { SensorMeasurementApiService } from '../../core/services/sensor-measurement.api.service';
-import { SensorMeasurementItem } from '../../core/models/sensor-measurement.models';
+import { DeviceStatus } from '../../core/models/mqtt.models';
+import {
+  SensorMeasurementItem,
+  SensorMeasurementsResponse
+} from '../../core/models/sensor-measurement.models';
 import { getApiErrorMessage } from '../../core/utils/api-error.util';
 
 interface SvgPoint {
@@ -25,9 +30,19 @@ interface YTick {
   label: string;
 }
 
+interface ChartRequest {
+  deviceId: string;
+  measurementName: string;
+  title: string;
+  description: string;
+  topic: string;
+}
+
 interface SensorChartData {
   title: string;
   description: string;
+  deviceId: string;
+  measurementName: string;
   topic: string;
   unit: string;
   items: SensorMeasurementItem[];
@@ -50,14 +65,13 @@ interface SensorChartData {
   styleUrl: './charts.component.css'
 })
 export class ChartsComponent implements OnInit, OnDestroy {
-  readonly temperatureMeasurementName = 'temperature';
-  readonly humidityMeasurementName = 'humidity';
-
-  readonly temperatureTopicLabel = 'licenta/pico/temperatura';
-  readonly humidityTopicLabel = 'licenta/pico/umiditate';
-
   readonly chartWidth = 1000;
   readonly chartHeight = 300;
+
+  devices: DeviceStatus[] = [];
+
+  selectedDeviceId = 'all';
+  selectedMeasurement = 'all';
 
   limit = 50;
   autoRefresh = false;
@@ -75,6 +89,7 @@ export class ChartsComponent implements OnInit, OnDestroy {
   private requestVersion = 0;
 
   constructor(
+    private mqttApi: MqttApiService,
     private sensorApi: SensorMeasurementApiService,
     private router: Router,
     private cdr: ChangeDetectorRef
@@ -116,50 +131,59 @@ export class ChartsComponent implements OnInit, OnDestroy {
     this.infoMessage = '';
     this.cdr.detectChanges();
 
-    this.chartsRequest = forkJoin({
-      temperature: this.sensorApi.getMeasurements(
-        this.temperatureMeasurementName,
-        undefined,
-        undefined,
-        Number(this.limit)
-      ),
-      humidity: this.sensorApi.getMeasurements(
-        this.humidityMeasurementName,
-        undefined,
-        undefined,
-        Number(this.limit)
+    this.chartsRequest = this.mqttApi.getStatus()
+      .pipe(
+        switchMap((status) => {
+          this.devices = status.devices ?? [];
+
+          const requests = this.buildChartRequests();
+
+          if (requests.length === 0) {
+            return of({
+              requests,
+              responses: [] as SensorMeasurementsResponse[]
+            });
+          }
+
+          return forkJoin(
+            requests.map((request) =>
+              this.sensorApi.getMeasurements(
+                request.measurementName,
+                undefined,
+                request.deviceId === 'all' ? undefined : request.deviceId,
+                Number(this.limit)
+              )
+            )
+          ).pipe(
+            switchMap((responses) => of({ requests, responses }))
+          );
+        }),
+        timeout(5000)
       )
-    })
-      .pipe(timeout(4000))
       .subscribe({
-        next: (res) => {
+        next: ({ requests, responses }) => {
           if (currentRequest !== this.requestVersion) {
             return;
           }
 
-          const temperatureChart = this.buildChart(
-            'Temperature',
-            'Values received from the Pico temperature topic and stored in MySQL.',
-            this.temperatureTopicLabel,
-            res.temperature.data
+          this.charts = requests.map((request, index) =>
+            this.buildChart(
+              request,
+              responses[index]?.data ?? []
+            )
           );
 
-          const humidityChart = this.buildChart(
-            'Humidity',
-            'Values received from the Pico humidity topic and stored in MySQL.',
-            this.humidityTopicLabel,
-            res.humidity.data
+          const totalItems = this.charts.reduce(
+            (sum, chart) => sum + chart.items.length,
+            0
           );
-
-          this.charts = [temperatureChart, humidityChart];
-
-          const totalItems =
-            res.temperature.data.length + res.humidity.data.length;
 
           this.lastUpdated = this.formatCurrentTime();
 
-          if (totalItems === 0) {
-            this.infoMessage = 'No sensor measurements found in database.';
+          if (requests.length === 0) {
+            this.infoMessage = 'No detected devices found. Connect the backend and start a Pico board.';
+          } else if (totalItems === 0) {
+            this.infoMessage = 'No sensor measurements found for the selected filters.';
           } else {
             this.infoMessage = hadCharts
               ? 'Charts refreshed from database.'
@@ -192,6 +216,10 @@ export class ChartsComponent implements OnInit, OnDestroy {
       });
   }
 
+  onFiltersChanged(): void {
+    this.loadCharts();
+  }
+
   onAutoRefreshChanged(): void {
     if (this.autoRefresh) {
       this.startAutoRefresh();
@@ -214,6 +242,39 @@ export class ChartsComponent implements OnInit, OnDestroy {
     return `${value.toFixed(2)} ${unit}`;
   }
 
+  private buildChartRequests(): ChartRequest[] {
+    const selectedDevices =
+      this.selectedDeviceId === 'all'
+        ? this.devices
+        : this.devices.filter((device) => device.client_id === this.selectedDeviceId);
+
+    const measurements =
+      this.selectedMeasurement === 'all'
+        ? ['temperature', 'humidity']
+        : [this.selectedMeasurement];
+
+    const requests: ChartRequest[] = [];
+
+    for (const device of selectedDevices) {
+      for (const measurement of measurements) {
+        const isTemperature = measurement === 'temperature';
+        const topic = isTemperature
+          ? device.topics.temperatura
+          : device.topics.umiditate;
+
+        requests.push({
+          deviceId: device.client_id,
+          measurementName: measurement,
+          title: `${device.client_id} - ${isTemperature ? 'Temperature' : 'Humidity'}`,
+          description: `Values received from ${device.client_id} and stored in MySQL.`,
+          topic
+        });
+      }
+    }
+
+    return requests;
+  }
+
   private startAutoRefresh(): void {
     this.stopAutoRefresh();
 
@@ -232,9 +293,7 @@ export class ChartsComponent implements OnInit, OnDestroy {
   }
 
   private buildChart(
-    title: string,
-    description: string,
-    topic: string,
+    request: ChartRequest,
     rawItems: SensorMeasurementItem[]
   ): SensorChartData {
     const items = [...rawItems]
@@ -259,9 +318,11 @@ export class ChartsComponent implements OnInit, OnDestroy {
     const polylinePoints = points.map((point) => `${point.x},${point.y}`).join(' ');
 
     return {
-      title,
-      description,
-      topic,
+      title: request.title,
+      description: request.description,
+      deviceId: request.deviceId,
+      measurementName: request.measurementName,
+      topic: request.topic,
       unit,
       items,
       points,

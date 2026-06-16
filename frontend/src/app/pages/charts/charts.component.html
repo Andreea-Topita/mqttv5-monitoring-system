@@ -6,7 +6,7 @@
         <p class="eyebrow">Sensor data</p>
         <h1>Sensor charts</h1>
         <p class="subtitle">
-          Temperature and humidity values loaded from the MySQL database through the backend API.
+          Temperature and humidity values grouped by detected Pico device and loaded from the MySQL database.
         </p>
       </div>
 
@@ -23,8 +23,27 @@
 
     <section class="filters-card">
       <div class="field">
+        <label>Device</label>
+        <select [(ngModel)]="selectedDeviceId" (change)="onFiltersChanged()">
+          <option value="all">All detected devices</option>
+          <option *ngFor="let device of devices" [value]="device.client_id">
+            {{ device.client_id }} - {{ device.status }}
+          </option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Measurement</label>
+        <select [(ngModel)]="selectedMeasurement" (change)="onFiltersChanged()">
+          <option value="all">Temperature and humidity</option>
+          <option value="temperature">Temperature</option>
+          <option value="humidity">Humidity</option>
+        </select>
+      </div>
+
+      <div class="field">
         <label>Number of measurements</label>
-        <select [(ngModel)]="limit" (change)="loadCharts()">
+        <select [(ngModel)]="limit" (change)="onFiltersChanged()">
           <option [ngValue]="20">20</option>
           <option [ngValue]="50">50</option>
           <option [ngValue]="100">100</option>
@@ -55,6 +74,8 @@
 
     <div class="charts-status" *ngIf="lastUpdated">
       <span>Last updated: {{ lastUpdated }}</span>
+      <span>Detected devices: {{ devices.length }}</span>
+      <span>Charts displayed: {{ charts.length }}</span>
     </div>
 
     <div class="alert success" *ngIf="infoMessage && !errorMessage">
@@ -108,7 +129,7 @@
         </div>
 
         <div class="empty-state" *ngIf="chart.items.length === 0">
-          No stored values found for this topic.
+          No stored values found for this device and measurement.
         </div>
 
         <div class="chart-wrapper" *ngIf="chart.items.length > 0">
