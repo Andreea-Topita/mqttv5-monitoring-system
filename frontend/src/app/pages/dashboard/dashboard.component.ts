@@ -18,19 +18,24 @@ import {
 
 import {
   DASHBOARD_TOPICS,
-  POLLING_INTERVAL_MS 
+  POLLING_INTERVAL_MS
 } from './dashboard.config';
 
 import {
-  LatestTelemetryState,
+  DeviceTelemetryMap,
+  buildDashboardTopics,
+  createInitialDeviceTelemetryState,
   createInitialStatus,
-  createInitialTelemetryState,
+  getNextActiveTopic,
   normalizeStatus,
-  updateTelemetryState
+  syncTelemetryWithDevices,
+  topicMatchesFilter,
+  updateDeviceTelemetryState
 } from './dashboard.helpers';
 
 import { DashboardHeader } from './components/dashboard-header/dashboard-header';
 import { TelemetryOverview } from './components/telemetry-overview/telemetry-overview';
+import { DeviceConfigPanel } from './components/device-config-panel/device-config-panel';
 import { PublishPanel } from './components/publish-panel/publish-panel';
 import { SubscriptionPanel } from './components/subscription-panel/subscription-panel';
 import { LiveMessagesPanel } from './components/live-messages-panel/live-messages-panel';
@@ -43,6 +48,7 @@ import { MessageHistoryPanel } from './components/message-history-panel/message-
     CommonModule,
     DashboardHeader,
     TelemetryOverview,
+    DeviceConfigPanel,
     PublishPanel,
     SubscriptionPanel,
     LiveMessagesPanel,
@@ -55,14 +61,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
   topics = DASHBOARD_TOPICS;
 
   status: StatusResponse = createInitialStatus();
+  deviceTelemetry: DeviceTelemetryMap = createInitialDeviceTelemetryState();
 
   activeMessageTopic = '';
   messages: MessageItem[] = [];
   lastMessageId = 0;
-
-  latestStatus = '-';
-  latestTemperature = '-';
-  latestHumidity = '-';
 
   infoMessage = '';
   errorMessage = '';
@@ -96,7 +99,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
 
     return this.messages
-      .filter((msg) => msg.topic === this.activeMessageTopic)
+      .filter((msg) => topicMatchesFilter(this.activeMessageTopic, msg.topic))
       .slice(-20);
   }
 
@@ -110,7 +113,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.api.getStatus().subscribe({
       next: (res: StatusResponse) => {
         this.status = normalizeStatus(res);
-        this.syncActiveTopicWithSubscriptions();
+        this.deviceTelemetry = syncTelemetryWithDevices(
+          this.deviceTelemetry,
+          this.status.devices
+        );
+
+        this.refreshTopicOptions();
         this.syncView();
       },
       error: () => {},
@@ -131,19 +139,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.api.getMessages(undefined, this.lastMessageId).subscribe({
       next: (res: { success: boolean; messages: MessageItem[] }) => {
         if (res.messages.length > 0) {
-          this.messages = [...this.messages, ...res.messages].slice(-100);
+          this.messages = [...this.messages, ...res.messages].slice(-120);
           this.lastMessageId = res.messages[res.messages.length - 1].id;
 
-          const nextTelemetry = updateTelemetryState(
-            {
-              latestStatus: this.latestStatus,
-              latestTemperature: this.latestTemperature,
-              latestHumidity: this.latestHumidity
-            },
+          this.deviceTelemetry = updateDeviceTelemetryState(
+            this.deviceTelemetry,
             res.messages
           );
 
-          this.applyTelemetryState(nextTelemetry);
           this.syncView();
         }
       },
@@ -155,9 +158,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
+
   clearLiveMessages(): void {
     this.messages = [];
-    this.lastMessageId = 0;
     this.syncView();
   }
 
@@ -177,6 +180,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   handleStatusRefreshRequested(): void {
+    this.loadStatus();
+  }
+
+  handleDeviceConfigSent(): void {
     this.loadStatus();
   }
 
@@ -235,34 +242,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 
-  private syncActiveTopicWithSubscriptions(): void {
-    const subscriptions = this.status.subscriptions ?? {};
-    const subscribedTopics = Object.keys(subscriptions);
-
-    if (
-      this.activeMessageTopic &&
-      subscriptions[this.activeMessageTopic] !== undefined
-    ) {
-      return;
-    }
-
-    this.activeMessageTopic = subscribedTopics.length > 0 ? subscribedTopics[0] : '';
-  }
-
-  private applyTelemetryState(nextTelemetry: LatestTelemetryState): void {
-    this.latestStatus = nextTelemetry.latestStatus;
-    this.latestTemperature = nextTelemetry.latestTemperature;
-    this.latestHumidity = nextTelemetry.latestHumidity;
+  private refreshTopicOptions(): void {
+    this.topics = buildDashboardTopics(this.status.devices, DASHBOARD_TOPICS);
+    this.activeMessageTopic = getNextActiveTopic(this.activeMessageTopic, this.topics);
   }
 
   private resetDashboardState(): void {
     this.status = createInitialStatus();
+    this.deviceTelemetry = createInitialDeviceTelemetryState();
+
     this.activeMessageTopic = '';
     this.messages = [];
     this.lastMessageId = 0;
-
-    const telemetry = createInitialTelemetryState();
-    this.applyTelemetryState(telemetry);
+    this.topics = DASHBOARD_TOPICS;
 
     this.clearNotifications();
     this.syncView();

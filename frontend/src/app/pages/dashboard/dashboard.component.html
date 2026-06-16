@@ -18,12 +18,30 @@
     </div>
 
     <app-telemetry-overview
-      [latestStatus]="latestStatus"
-      [latestTemperature]="latestTemperature"
-      [latestHumidity]="latestHumidity"
+      [devices]="status.devices"
+      [telemetryByDevice]="deviceTelemetry"
     ></app-telemetry-overview>
 
-    <section class="main-grid">
+    <app-device-config-panel
+      [devices]="status.devices"
+      [status]="status"
+      (configSent)="handleDeviceConfigSent()"
+    ></app-device-config-panel>
+
+    <app-live-messages-panel
+      [status]="status"
+      [topics]="topics"
+      [activeMessageTopic]="activeMessageTopic"
+      [displayedMessages]="displayedMessages"
+      (activeMessageTopicChange)="setActiveMessageTopic($event)"
+      (clearMessagesClicked)="clearLiveMessages()"
+    ></app-live-messages-panel>
+
+    <app-message-history-panel
+      [topics]="topics"
+    ></app-message-history-panel>
+
+    <section class="debug-grid">
       <app-publish-panel
         [topics]="topics"
         [status]="status"
@@ -37,18 +55,6 @@
         (subscriptionChanged)="handleSubscriptionChanged($event)"
       ></app-subscription-panel>
     </section>
-
-    <app-live-messages-panel
-      [status]="status"
-      [activeMessageTopic]="activeMessageTopic"
-      [displayedMessages]="displayedMessages"
-      (activeMessageTopicChange)="setActiveMessageTopic($event)"
-      (clearMessagesClicked)="clearLiveMessages()"
-    ></app-live-messages-panel>
-
-    <app-message-history-panel
-      [topics]="topics"
-    ></app-message-history-panel>
 
   </div>
 </div>

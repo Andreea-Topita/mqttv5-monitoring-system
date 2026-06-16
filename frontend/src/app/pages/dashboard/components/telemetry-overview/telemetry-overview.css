@@ -1,58 +1,126 @@
+@import '../../styles/dashboard-shared.css';
+
 :host {
   display: block;
 }
 
-.overview-grid {
+.device-overview-panel {
+  padding-bottom: 22px;
+}
+
+.device-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
 }
 
-.metric-card {
-  padding: 24px;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  border-radius: 24px;
-  box-shadow: 0 22px 50px rgba(15, 23, 42, 0.06);
+.device-card {
+  padding: 20px;
+  border-radius: 22px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  display: grid;
+  gap: 18px;
 }
 
-.metric-label {
-  display: block;
-  margin: 0 0 10px;
-  padding: 0;
+.device-card.online {
+  border-color: rgba(34, 197, 94, 0.35);
+  background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 100%);
+}
+
+.device-card.offline {
+  border-color: rgba(239, 68, 68, 0.25);
+  background: linear-gradient(180deg, #fef2f2 0%, #ffffff 100%);
+}
+
+.device-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.device-name {
+  font-size: 20px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.device-topics {
+  margin-top: 6px;
   font-size: 12px;
-  line-height: 1.2;
+  color: #64748b;
   font-weight: 700;
+  word-break: break-word;
+}
+
+.device-status {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  padding: 0 11px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: #64748b;
-  font-family: inherit;
 }
 
-.metric-value {
-  margin-top: 12px;
-  font-size: 34px;
-  font-weight: 700;
+.device-card.online .device-status {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.device-card.offline .device-status {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.device-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.device-metric {
+  padding: 14px;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+}
+
+.device-metric span {
+  display: block;
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.device-metric strong {
+  display: block;
+  margin-top: 8px;
   color: #1e293b;
-  letter-spacing: -0.03em;
-  font-family: inherit;
+  font-size: 20px;
+  font-weight: 900;
 }
 
-.metric-note {
-  margin-top: 10px;
+.device-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px;
   color: #64748b;
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 @media (max-width: 1100px) {
-  .overview-grid {
+  .device-grid {
     grid-template-columns: 1fr;
   }
-}
 
-@media (max-width: 900px) {
-  .metric-card {
-    padding: 20px;
+  .device-metrics {
+    grid-template-columns: 1fr;
   }
 }

@@ -2,7 +2,9 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 
 import {
+  ActionResponse,
   ConnectRequest,
+  DeviceConfigRequest,
   MessageHistoryResponse,
   MessageItem,
   PeriodicPublishRequest,
@@ -21,11 +23,11 @@ export class MqttApiService {
   constructor(private http: HttpClient) {}
 
   connect(payload: ConnectRequest) {
-    return this.http.post(`${this.baseUrl}/api/connection/connect`, payload);
+    return this.http.post<ActionResponse>(`${this.baseUrl}/api/connection/connect`, payload);
   }
 
   disconnect() {
-    return this.http.post(`${this.baseUrl}/api/connection/disconnect`, {});
+    return this.http.post<ActionResponse>(`${this.baseUrl}/api/connection/disconnect`, {});
   }
 
   getStatus() {
@@ -33,23 +35,27 @@ export class MqttApiService {
   }
 
   subscribe(payload: SubscribeRequest) {
-    return this.http.post(`${this.baseUrl}/api/subscription/subscribe`, payload);
+    return this.http.post<ActionResponse>(`${this.baseUrl}/api/subscription/subscribe`, payload);
   }
 
   unsubscribe(payload: UnsubscribeRequest) {
-    return this.http.post(`${this.baseUrl}/api/subscription/unsubscribe`, payload);
+    return this.http.post<ActionResponse>(`${this.baseUrl}/api/subscription/unsubscribe`, payload);
   }
 
   publishMessage(payload: PublishMessageRequest) {
-    return this.http.post(`${this.baseUrl}/api/publishing/publish-message`, payload);
+    return this.http.post<ActionResponse>(`${this.baseUrl}/api/publishing/publish-message`, payload);
+  }
+
+  configureDevice(payload: DeviceConfigRequest) {
+    return this.http.post<ActionResponse>(`${this.baseUrl}/api/publishing/device-config`, payload);
   }
 
   startPeriodic(payload: PeriodicPublishRequest) {
-    return this.http.post(`${this.baseUrl}/api/publishing/start-periodic`, payload);
+    return this.http.post<ActionResponse>(`${this.baseUrl}/api/publishing/start-periodic`, payload);
   }
 
   stopPeriodic() {
-    return this.http.post(`${this.baseUrl}/api/publishing/stop-periodic`, {});
+    return this.http.post<ActionResponse>(`${this.baseUrl}/api/publishing/stop-periodic`, {});
   }
 
   getMessages(topic?: string, afterId?: number) {

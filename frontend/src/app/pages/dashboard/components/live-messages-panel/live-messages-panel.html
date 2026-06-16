@@ -11,12 +11,26 @@
     </div>
   </div>
 
+  <div class="form-grid live-topic-filter">
+    <div class="field field-full">
+      <label>Live topic filter</label>
+      <select
+        [ngModel]="activeMessageTopic"
+        (ngModelChange)="setActiveTopic($event)"
+      >
+        <option *ngFor="let topic of liveTopicOptions" [value]="topic">
+          {{ topic }}
+        </option>
+      </select>
+    </div>
+  </div>
+
   <div class="empty-state" *ngIf="!activeMessageTopic">
-    Select a topic and subscribe to display incoming messages.
+    Select a topic to display incoming messages.
   </div>
 
   <div class="empty-state" *ngIf="activeMessageTopic && displayedMessages.length === 0">
-    Subscription is active, but no new messages have been received yet.
+    No new messages have been received yet for the selected topic.
   </div>
 
   <div class="message-list" *ngIf="activeMessageTopic && displayedMessages.length > 0">

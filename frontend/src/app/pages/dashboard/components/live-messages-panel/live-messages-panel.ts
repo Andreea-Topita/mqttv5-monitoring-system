@@ -17,24 +17,29 @@ import {
 })
 export class LiveMessagesPanel {
   @Input() status: StatusResponse | null = null;
+  @Input() topics: string[] = [];
   @Input() activeMessageTopic = '';
   @Input() displayedMessages: MessageItem[] = [];
 
   @Output() activeMessageTopicChange = new EventEmitter<string>();
   @Output() clearMessagesClicked = new EventEmitter<void>();
 
-  get subscribedTopics(): string[] {
-    return Object.keys(this.status?.subscriptions ?? {});
+  get liveTopicOptions(): string[] {
+    return this.topics.filter((topic) =>
+      topic.includes('/status') ||
+      topic.includes('/temperatura') ||
+      topic.includes('/umiditate')
+    );
   }
 
   setActiveTopic(topic: string): void {
     this.activeMessageTopicChange.emit(topic);
   }
-  
+
   formatMessage(msg: MessageItem) {
     return formatMqttPayload(msg.topic, msg.message, msg.timestamp);
   }
-  
+
   formatTimestamp(timestamp: number): string {
     if (!timestamp) {
       return '-';

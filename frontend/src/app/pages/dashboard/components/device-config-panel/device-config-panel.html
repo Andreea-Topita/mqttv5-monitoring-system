@@ -1,0 +1,92 @@
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <p class="panel-kicker">Device control</p>
+      <h2>Configure detected device</h2>
+    </div>
+
+    <div class="messages-meta">
+      Detected devices: <strong>{{ devices.length }}</strong>
+    </div>
+  </div>
+
+  <div class="local-alert success" *ngIf="infoMessage">
+    {{ infoMessage }}
+  </div>
+
+  <div class="local-alert error" *ngIf="errorMessage">
+    {{ errorMessage }}
+  </div>
+
+  <div class="empty-state" *ngIf="!hasDevices">
+    No Pico device has been detected yet. Start a Pico board and wait for telemetry messages.
+  </div>
+
+  <ng-container *ngIf="hasDevices">
+    <div class="detected-device-list">
+      <div
+        class="detected-device-card"
+        *ngFor="let device of devices"
+        [class.online]="device.status === 'online'"
+        [class.offline]="device.status !== 'online'"
+        [class.selected]="device.client_id === selectedClientId"
+        (click)="selectedClientId = device.client_id"
+      >
+        <div>
+          <strong>{{ device.client_id }}</strong>
+          <span>{{ device.status }}</span>
+        </div>
+
+        <small>
+          {{ device.capabilities.length > 0 ? device.capabilities.join(', ') : 'No capabilities yet' }}
+        </small>
+      </div>
+    </div>
+
+    <div class="local-alert error" *ngIf="isSelectedDeviceOffline">
+      Selected device is offline. The configuration is sent through MQTT, so it should be applied when the device is online.
+    </div>
+
+    <div class="form-grid">
+      <div class="field">
+        <label>Device</label>
+        <select [(ngModel)]="selectedClientId">
+          <option *ngFor="let device of devices" [value]="device.client_id">
+            {{ device.client_id }} — {{ device.status }}
+          </option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Device publish QoS</label>
+        <select [(ngModel)]="publishQos">
+          <option [ngValue]="0">0</option>
+          <option [ngValue]="1">1</option>
+          <option [ngValue]="2">2</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Publish interval (seconds)</label>
+        <input type="number" min="1" [(ngModel)]="publishInterval" />
+      </div>
+      
+    </div>
+
+    <div class="config-topic-box" *ngIf="selectedDevice">
+      Config topic:
+      <strong>{{ selectedDevice.topics.config }}</strong>
+    </div>
+
+    <div class="button-row">
+      <button
+        class="primary-btn"
+        type="button"
+        (click)="configureSelectedDevice()"
+        [disabled]="loading || !status?.connected || !selectedClientId"
+      >
+        Send configuration
+      </button>
+    </div>
+  </ng-container>
+</section>

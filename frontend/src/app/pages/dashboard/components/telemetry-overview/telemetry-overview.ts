@@ -1,6 +1,12 @@
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
+import { DeviceStatus } from '../../../../core/models/mqtt.models';
+import {
+  DeviceLatestTelemetry,
+  DeviceTelemetryMap
+} from '../../dashboard.helpers';
+
 @Component({
   selector: 'app-telemetry-overview',
   standalone: true,
@@ -9,10 +15,19 @@ import { CommonModule } from '@angular/common';
   styleUrl: './telemetry-overview.css'
 })
 export class TelemetryOverview {
-  @Input() connected = false;
-  @Input() periodicPublishing = false;
+  @Input() devices: DeviceStatus[] = [];
+  @Input() telemetryByDevice: DeviceTelemetryMap = {};
 
-  @Input() latestStatus = '-';
-  @Input() latestTemperature = '-';
-  @Input() latestHumidity = '-';
+  getTelemetry(device: DeviceStatus): DeviceLatestTelemetry {
+    return this.telemetryByDevice[device.client_id] ?? {
+      status: device.status || '-',
+      temperature: '-',
+      humidity: '-',
+      lastSeenText: '-'
+    };
+  }
+
+  getStatusLabel(device: DeviceStatus): string {
+    return device.status || 'unknown';
+  }
 }

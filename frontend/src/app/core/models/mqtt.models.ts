@@ -32,6 +32,18 @@ export interface PeriodicPublishRequest {
   interval: number;
 }
 
+export interface DeviceConfigRequest {
+  client_id: string;
+  publish_qos: number;
+  publish_interval: number;
+  message_qos: number;
+}
+
+export interface ActionResponse {
+  success: boolean;
+  message: string;
+}
+
 export interface MessageItem {
   id: number;
   topic: string;
@@ -39,10 +51,26 @@ export interface MessageItem {
   timestamp: number;
 }
 
+export interface DeviceTopics {
+  status: string;
+  temperatura: string;
+  umiditate: string;
+  config: string;
+}
+
+export interface DeviceStatus {
+  client_id: string;
+  status: string;
+  capabilities: string[];
+  last_seen: number | null;
+  topics: DeviceTopics;
+}
+
 export interface StatusResponse {
   connected: boolean;
   periodic_publishing: boolean;
   subscriptions: Record<string, number>;
+  devices: DeviceStatus[];
 }
 
 export interface MessageHistoryItem {

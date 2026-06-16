@@ -1,19 +1,63 @@
-<section class="overview-grid">
-  <div class="metric-card">
-    <div class="metric-label">Pico status</div>
-    <div class="metric-value">{{ latestStatus }}</div>
-    <div class="metric-note">Latest value received from the device status topic.</div>
+<section class="panel device-overview-panel">
+  <div class="panel-header">
+    <div>
+      <p class="panel-kicker">Automatic discovery</p>
+      <h2>Detected Pico devices</h2>
+    </div>
+
+    <div class="messages-meta">
+      Devices: <strong>{{ devices.length }}</strong>
+    </div>
   </div>
 
-  <div class="metric-card">
-    <div class="metric-label">Temperature</div>
-    <div class="metric-value">{{ latestTemperature }}</div>
-    <div class="metric-note">Latest telemetry value received from the sensor topic.</div>
+  <div class="empty-state" *ngIf="devices.length === 0">
+    No Pico devices detected yet. After a Pico publishes status, temperature or humidity,
+    it will appear here automatically.
   </div>
 
-  <div class="metric-card">
-    <div class="metric-label">Humidity</div>
-    <div class="metric-value">{{ latestHumidity }}</div>
-    <div class="metric-note">Latest telemetry value received from the sensor topic.</div>
+  <div class="device-grid" *ngIf="devices.length > 0">
+    <div
+      class="device-card"
+      *ngFor="let device of devices"
+      [class.online]="device.status === 'online'"
+      [class.offline]="device.status !== 'online'"
+    >
+      <div class="device-card-header">
+        <div>
+          <div class="device-name">{{ device.client_id }}</div>
+          <div class="device-topics">
+            {{ device.topics.temperatura }}
+          </div>
+        </div>
+
+        <span class="device-status">
+          {{ getStatusLabel(device) }}
+        </span>
+      </div>
+
+      <ng-container *ngIf="getTelemetry(device) as telemetry">
+        <div class="device-metrics">
+          <div class="device-metric">
+            <span>Status</span>
+            <strong>{{ telemetry.status }}</strong>
+          </div>
+
+          <div class="device-metric">
+            <span>Temperature</span>
+            <strong>{{ telemetry.temperature }}</strong>
+          </div>
+
+          <div class="device-metric">
+            <span>Humidity</span>
+            <strong>{{ telemetry.humidity }}</strong>
+          </div>
+        </div>
+
+        <div class="device-footer">
+          <span>Capabilities: {{ device.capabilities.join(', ') || '-' }}</span>
+          <span>Last seen: {{ telemetry.lastSeenText }}</span>
+        </div>
+      </ng-container>
+    </div>
   </div>
 </section>

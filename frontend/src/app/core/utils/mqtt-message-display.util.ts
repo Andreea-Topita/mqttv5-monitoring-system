@@ -27,11 +27,14 @@ export function formatMqttPayload(
 ): DisplayMqttPayload {
   const rawPayload = payload ?? '';
 
-  if (topic === 'licenta/pico/status') {
+  const topicInfo = parseDeviceTopic(topic);
+
+  if (topicInfo?.category === 'status') {
     return {
       isFormatted: true,
       label: 'Status',
       valueText: rawPayload || '-',
+      device: topicInfo.clientId,
       measuredAt: formatTimestamp(fallbackTimestamp),
       rawPayload
     };
@@ -52,8 +55,8 @@ export function formatMqttPayload(
   const measurementName = senmlRecord.n ?? 'measurement';
   const label = SENSOR_LABELS[measurementName] ?? measurementName;
   const valueText = formatMeasurementValue(senmlRecord.v, senmlRecord.u);
-  const device = formatDeviceName(senmlRecord.bn);
-  const measuredAt = formatTimestamp(senmlRecord.t ?? fallbackTimestamp);
+  const device = formatDeviceName(senmlRecord.bn) ?? topicInfo?.clientId;
+  const measuredAt = formatTimestamp(fallbackTimestamp ?? senmlRecord.t);
 
   return {
     isFormatted: true,
@@ -73,6 +76,23 @@ export function formatTelemetryValue(topic: string, payload: string): string {
   }
 
   return payload || '-';
+}
+
+function parseDeviceTopic(topic: string): { clientId: string; category: string } | null {
+  const parts = topic.split('/');
+
+  if (parts.length !== 3) {
+    return null;
+  }
+
+  if (parts[0] !== 'licenta') {
+    return null;
+  }
+
+  return {
+    clientId: parts[1],
+    category: parts[2]
+  };
 }
 
 function parseSenmlPayload(payload: string): SenmlRecord | null {
