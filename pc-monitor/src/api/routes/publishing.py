@@ -1,7 +1,11 @@
 from fastapi import APIRouter
 
 from src.api.schemas.common import ActionResponse
-from src.api.schemas.publish import PublishMessageRequest, PeriodicPublishRequest
+from src.api.schemas.publish import (
+    DeviceConfigRequest,
+    PeriodicPublishRequest,
+    PublishMessageRequest
+)
 from src.bootstrap.service_container import monitor_service
 
 router = APIRouter(prefix="/api/publishing", tags=["publishing"])
@@ -15,6 +19,23 @@ def publish_message(payload: PublishMessageRequest):
         qos=payload.qos
     )
     return ActionResponse(message="Message published successfully.")
+
+
+@router.post("/device-config", response_model=ActionResponse)
+def configure_device(payload: DeviceConfigRequest):
+    result = monitor_service.configure_device(
+        client_id=payload.client_id,
+        publish_qos=payload.publish_qos,
+        publish_interval=payload.publish_interval,
+        message_qos=payload.message_qos
+    )
+
+    return ActionResponse(
+        message=(
+            "Device configuration sent to "
+            f"{result['topic']}: {result['message']}"
+        )
+    )
 
 
 @router.post("/start-periodic", response_model=ActionResponse)
