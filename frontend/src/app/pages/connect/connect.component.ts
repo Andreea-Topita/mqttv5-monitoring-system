@@ -19,14 +19,16 @@ import { getApiErrorMessage } from '../../core/utils/api-error.util';
 export class ConnectComponent {
   form: ConnectRequest = {
     broker_address: 'mosquitto',
-    broker_port: 1883,
+    broker_port: 8883,
     client_id: 'pc_monitor_01',
     username: '',
     password: '',
     last_will_topic: 'licenta/pc/status',
     last_will_message: 'offline',
     last_will_qos: 1,
-    last_will_retain: false
+    last_will_retain: false,
+    use_tls: true,
+    tls_insecure: false
   };
 
   errorMessage = '';
@@ -79,5 +81,9 @@ export class ConnectComponent {
   logout(): void {
     this.authService.logout();
     this.router.navigate(['/login']);
+  }
+
+  onTlsChanged(): void {
+    this.form.broker_port = this.form.use_tls ? 8883 : 1883;
   }
 }

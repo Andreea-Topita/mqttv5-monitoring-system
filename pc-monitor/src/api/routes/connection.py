@@ -20,6 +20,8 @@ def connect(payload: ConnectRequest):
         last_will_message=payload.last_will_message,
         last_will_qos=payload.last_will_qos,
         last_will_retain=payload.last_will_retain,
+        use_tls=payload.use_tls,
+        tls_insecure=payload.tls_insecure,
     )
     return ActionResponse(message="Connected successfully.")
 

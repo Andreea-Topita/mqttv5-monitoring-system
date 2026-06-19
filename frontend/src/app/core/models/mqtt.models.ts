@@ -8,6 +8,8 @@ export interface ConnectRequest {
   last_will_message: string;
   last_will_qos: number;
   last_will_retain: boolean;
+  use_tls: boolean;
+  tls_insecure: boolean;
 }
 
 export interface SubscribeRequest {

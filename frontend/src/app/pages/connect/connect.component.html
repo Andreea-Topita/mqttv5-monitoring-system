@@ -37,6 +37,17 @@
           <input type="number" [(ngModel)]="form.broker_port" placeholder="1883" />
         </div>
 
+        <div class="checkbox-field field-full">
+          <label class="checkbox-row">
+            <input
+              type="checkbox"
+              [(ngModel)]="form.use_tls"
+              (ngModelChange)="onTlsChanged()"
+            />
+            <span>Use TLS secure connection</span>
+          </label>
+        </div>
+
         <div class="field">
           <label>Client ID</label>
           <input type="text" [(ngModel)]="form.client_id" placeholder="Example: pc_monitor_01" />

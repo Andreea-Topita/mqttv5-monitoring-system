@@ -3,6 +3,7 @@ from src.infrastructure.mqtt.packet_parser import PacketParser
 import socket
 import threading
 import time
+import ssl
 
 class MQTTClient:
     def __init__(self, client_id,on_message_callback=None):
@@ -32,8 +33,17 @@ class MQTTClient:
         self.last_ping = time.time()  #retinem momentul ultimei trimiteri a unui mesaj pingreq
         #utilizat pt a verifica daca trebuie trimit un alt ping pentru a mentine conexiunea activa
         
+        self.use_tls = False
+        self.ca_cert_path = "/app/certs/ca.crt"
+        self.tls_insecure = False
+
         self.on_message_callback = on_message_callback
         
+    def tls_set(self, use_tls: bool, ca_cert_path: str = "/app/certs/ca.crt", tls_insecure: bool = False):
+        self.use_tls = use_tls
+        self.ca_cert_path = ca_cert_path
+        self.tls_insecure = tls_insecure
+    
     def _decode_remaining_length(self, data, start_index=1):
         multiplier = 1
         value = 0
@@ -253,9 +263,24 @@ class MQTTClient:
     def conectare_broker(self, broker_address, broker_port):
         try:
             #socket TCP, Ipv4 
-            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.socket.connect((broker_address, broker_port))
-            print("Conectat la broker MQTT.")
+            raw_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            raw_socket.connect((broker_address, broker_port))
+
+            if self.use_tls:
+                if self.tls_insecure:
+                    context = ssl._create_unverified_context()
+                else:
+                    context = ssl.create_default_context(cafile=self.ca_cert_path)
+
+                self.socket = context.wrap_socket(
+                    raw_socket,
+                    server_hostname=broker_address
+                )
+
+                print("Conectat la broker MQTT prin TLS.")
+            else:
+                self.socket = raw_socket
+                print("Conectat la broker MQTT prin TCP simplu.")
 
 
             #pachet CONNECT 

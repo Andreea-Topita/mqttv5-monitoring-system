@@ -11,6 +11,8 @@ class ConnectRequest(BaseModel):
     last_will_message: str = Field(..., min_length=1)
     last_will_qos: int = Field(..., ge=0, le=2)
     last_will_retain: bool = False
+    use_tls: bool = False
+    tls_insecure: bool = False  
 
     @field_validator("broker_address", "client_id", "last_will_topic", "last_will_message")
     @classmethod

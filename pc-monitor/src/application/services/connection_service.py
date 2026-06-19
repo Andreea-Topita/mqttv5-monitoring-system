@@ -40,6 +40,8 @@ class ConnectionService:
         last_will_message: str,
         last_will_qos: int,
         last_will_retain: bool = False,
+        use_tls: bool = False,
+        tls_insecure: bool = False,
     ):
         if self.runtime.connected:
             raise AlreadyConnectedError("Client is already connected to a broker.")
@@ -67,6 +69,12 @@ class ConnectionService:
             self.runtime.client = MQTTClient(
                 client_id=client_id,
                 on_message_callback=self.on_message_callback
+            )
+            
+            self.runtime.client.tls_set(
+                use_tls=use_tls,
+                ca_cert_path="/app/certs/ca.crt",
+                tls_insecure=tls_insecure
             )
 
             self.runtime.client.will_set(
