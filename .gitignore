@@ -12,3 +12,10 @@ venv/
 Thumbs.db
 
 *.log
+
+# certificate si chei generate local pt mosquitto
+docker/mosquitto/certs/*.key
+docker/mosquitto/certs/*.crt
+docker/mosquitto/certs/*.csr
+docker/mosquitto/certs/*.srl
+docker/mosquitto/certs/*.pem
