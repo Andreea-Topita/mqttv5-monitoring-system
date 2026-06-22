@@ -1,32 +1,23 @@
 import time
+import ujson as json
+import _thread
 from wifi import connect_wifi
 from mqtt_client import MQTTClientPico
 from temp_sensor import TempSensor
-import ujson as json
 from time_utils import sync_time, get_unix_time
-
-#parola internet de acasa 
-SSID = "DIGI-5205"
-PASSWORD = "SPGgu6wJ"
-
-# broker mqtt
-BROKER_IP = "192.168.100.18"   # ip ul laptopului
-BROKER_PORT = 1883
+from config_manager import load_config, save_config
+from setup_portal import start_setup_portal
 
 # identificare client si topicuri
 CLIENT_ID = "pico_temp_01"
-TOPIC_STATUS = "licenta/pico/status"
-TOPIC_TEMP = "licenta/pico/temperatura"
-TOPIC_HUM = "licenta/pico/umiditate"
 
-# qos pentru datele senzorului
-PUBLISH_QOS = 0
+TOPIC_STATUS = "licenta/{}/status".format(CLIENT_ID)
+TOPIC_TEMP = "licenta/{}/temperatura".format(CLIENT_ID)
+TOPIC_HUM = "licenta/{}/umiditate".format(CLIENT_ID)
+TOPIC_CONFIG = "licenta/{}/config".format(CLIENT_ID)
 
 # qos separat pentru topicul de status
 STATUS_QOS = 1
-
-# la cate secunde se publica valorile
-PUBLISH_INTERVAL = 5
 
 USER_PROPERTIES = {
     "source_client_id": CLIENT_ID
@@ -37,7 +28,7 @@ SENML_BASE_NAME = "urn:dev:" + CLIENT_ID + ":"
 
 
 def build_senml_payload(measurement_name: str, unit: str, value) -> str:
-    # Construim payload SenML in format JSON.
+    # Construim payload SenML in format JSON
     # bn = base name / identificarea dispozitivului
     # n  = numele masuratorii
     # u  = unitatea de masura
@@ -56,29 +47,116 @@ def build_senml_payload(measurement_name: str, unit: str, value) -> str:
     return json.dumps(senml_record)
 
 
+# incarcam configuratia salvata din portalul AP
+config = load_config()
+
+# daca nu exista configuratie, placa intra in modul de configurare
+if config is None:
+    start_setup_portal("No saved configuration found.")
+
+SSID = config["wifi_ssid"]
+PASSWORD = config["wifi_password"]
+BROKER_IP = config["broker_ip"]
+BROKER_PORT = config["broker_port"]
+USE_TLS = config.get("use_tls", False)
+PUBLISH_QOS = config["publish_qos"]
+PUBLISH_INTERVAL = config["publish_interval"]
+
+runtime_config = {
+    "publish_qos": PUBLISH_QOS,
+    "publish_interval": PUBLISH_INTERVAL
+}
+runtime_config_lock = _thread.allocate_lock()
+
 sensor = TempSensor(gpio_pin=20)
+client = None
 
-client = MQTTClientPico(
-    broker_ip=BROKER_IP,
-    broker_port=BROKER_PORT,
-    client_id=CLIENT_ID,
-    keep_alive=10,
-    will_topic=TOPIC_STATUS,
-    will_payload="offline",
-    will_qos=1,
-    will_retain=True,
-    will_user_properties=USER_PROPERTIES
-)
 
+def handle_config_message(topic: str, message: str):
+    # primeste configurari venite de pe topicul licenta/<client_id>/config
+    global config
+
+    if topic != TOPIC_CONFIG:
+        return
+
+    try:
+        data = json.loads(message)
+    except Exception as e:
+        print("invalid config json:", e)
+        return
+
+    new_qos = data.get("publish_qos")
+    new_interval = data.get("publish_interval")
+
+    runtime_config_lock.acquire()
+    try:
+        if new_qos is not None:
+            try:
+                new_qos = int(new_qos)
+                if new_qos in [0, 1, 2]:
+                    runtime_config["publish_qos"] = new_qos
+                    config["publish_qos"] = new_qos
+                    print("publish_qos updated to", new_qos)
+            except Exception:
+                pass
+
+        if new_interval is not None:
+            try:
+                new_interval = int(new_interval)
+                if new_interval > 0:
+                    runtime_config["publish_interval"] = new_interval
+                    config["publish_interval"] = new_interval
+                    print("publish_interval updated to", new_interval)
+            except Exception:
+                pass
+    finally:
+        runtime_config_lock.release()
+
+    try:
+        save_config(config)
+        print("config saved after remote update")
+    except Exception as e:
+        print("could not save config:", e)
+        
+        
 try:
-    # connect wifi, apoi incearca sa ia timpul real, apoi se conecteaza la brokerul mqtt 
-    connect_wifi(SSID, PASSWORD)
+    # conectare la reteaua Wi-Fi configurata
+    try:
+        connect_wifi(SSID, PASSWORD)
+    except Exception as wifi_error:
+        print("Wi-Fi error:", wifi_error)
+        start_setup_portal("Wi-Fi connection failed. Please configure again.")
 
     # sincronizam timpul dupa conectarea la Wi-Fi
-    sync_time()
+    try:
+        sync_time()
+    except Exception as time_error:
+        print("Time sync warning:", time_error)
 
-    client.connect()
+    # cream clientul MQTT folosind brokerul salvat in config.json
+    client = MQTTClientPico(
+        broker_ip=BROKER_IP,
+        broker_port=BROKER_PORT,
+        client_id=CLIENT_ID,
+        keep_alive=10,
+        will_topic=TOPIC_STATUS,
+        will_payload="offline",
+        will_qos=STATUS_QOS,
+        will_retain=True,
+        will_user_properties=USER_PROPERTIES,
+        use_tls=USE_TLS
+    )
+    
+    # conectare la brokerul MQTT
+    try:
+        client.connect()
+    except Exception as mqtt_error:
+        print("MQTT error:", mqtt_error)
+        start_setup_portal("MQTT broker connection failed. Please check broker IP.")
 
+    client.start_receive_loop(handle_config_message)
+    client.subscribe(TOPIC_CONFIG, qos=0)
+    
     # la conectare publica online cu retain
     # astfel un subscriber nou vede imediat ultima stare cunoscuta
     client.publish(
@@ -89,35 +167,65 @@ try:
         user_properties=USER_PROPERTIES
     )
 
+    print("Configuration loaded")
+    print("SSID:", SSID)
+    print("Broker:", BROKER_IP, BROKER_PORT)
+    print("Use TLS:", USE_TLS)
+    print("Publish QoS:", PUBLISH_QOS)
+    print("Publish interval:", PUBLISH_INTERVAL)
+
+    
     while True:
+        runtime_config_lock.acquire()
+        try:
+            current_qos = runtime_config["publish_qos"]
+            current_interval = runtime_config["publish_interval"]
+        finally:
+            runtime_config_lock.release()
+
         try:
             temp, hum = sensor.read()
+        except Exception as sensor_error:
+            print("Sensor read error:", sensor_error)
 
+            for _ in range(current_interval):
+                time.sleep(1)
+                client.ping()
+
+            continue
+        
+        try:
             temp_payload = build_senml_payload("temperature", "Cel", temp)
             hum_payload = build_senml_payload("humidity", "%RH", hum)
 
             print("Publishing temp:", temp_payload)
+            print("Current QoS:", current_qos)
+
             client.publish(
                 TOPIC_TEMP,
                 temp_payload,
-                qos=PUBLISH_QOS,
-                retain=True,
+                qos=current_qos,
+                retain=False,
                 user_properties=USER_PROPERTIES
             )
 
             print("Publishing hum:", hum_payload)
+            print("Current QoS:", current_qos)
+
             client.publish(
                 TOPIC_HUM,
                 hum_payload,
-                qos=PUBLISH_QOS,
-                retain=True,
+                qos=current_qos,
+                retain=False,
                 user_properties=USER_PROPERTIES
             )
 
-        except Exception as sensor_error:
-            print("Sensor read error:", sensor_error)
 
-        for _ in range(PUBLISH_INTERVAL):
+        except Exception as mqtt_error:
+            print("MQTT publish error:", mqtt_error)
+            raise
+
+        for _ in range(current_interval):
             time.sleep(1)
             client.ping()
 
@@ -126,7 +234,7 @@ except Exception as e:
 
 finally:
     try:
-        if client.connected:
+        if client is not None and client.connected:
             # la inchidere normala publicam noi offline
             # daca aplicatia moare brusc, brokerul publica Will-ul offline
             client.publish(
@@ -136,7 +244,11 @@ finally:
                 retain=True,
                 user_properties=USER_PROPERTIES
             )
-    except:
+    except Exception:
         pass
 
-    client.close()
+    try:
+        if client is not None:
+            client.close()
+    except Exception:
+        pass
