@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Pico MQTT Setup</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 520px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f7fb;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+        }
+
+        label {
+            display: block;
+            margin-top: 14px;
+            font-weight: bold;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px;
+            margin-top: 6px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-sizing: border-box;
+        }
+
+        button {
+            margin-top: 20px;
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: #4f46e5;
+            color: white;
+            font-weight: bold;
+        }
+
+        .msg {
+            color: #0f766e;
+            font-weight: bold;
+        }
+
+        .hint {
+            color: #555;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>Pico W MQTT setup</h2>
+        <p class="hint">Enter Wi-Fi and MQTT broker settings.</p>
+        <p class="msg">{{message}}</p>
+
+        <form method="POST">
+            <label>Wi-Fi SSID</label>
+            <input name="wifi_ssid" required>
+
+            <label>Wi-Fi password</label>
+            <input name="wifi_password" type="password">
+
+            <label>MQTT broker IP for Pico W</label>
+            <input name="broker_ip" placeholder="example: 192.168.100.18" required>
+
+            <label>MQTT broker port</label>
+            <input id="broker_port" type="number" name="broker_port" value="1883">
+            
+            <label>
+              <input id="use_tls" type="checkbox" name="use_tls" onchange="updateBrokerPort()">
+              Use TLS secure connection
+            </label>
+
+            <label>QoS for temperature and humidity</label>
+            <select name="publish_qos">
+                <option value="0">QoS 0</option>
+                <option value="1">QoS 1</option>
+                <option value="2">QoS 2</option>
+            </select>
+
+            <label>Publish interval, seconds</label>
+            <input name="publish_interval" value="5" required>
+
+            <button type="submit">Save configuration</button>
+        </form>
+    </div>
+    <script>
+      function updateBrokerPort() {
+        const useTls = document.getElementById("use_tls");
+        const brokerPort = document.getElementById("broker_port");
+
+        if (useTls.checked) {
+          brokerPort.value = 8883;
+        } else {
+          brokerPort.value = 1883;
+        }
+      }
+    </script>
+</body>
+</html>
