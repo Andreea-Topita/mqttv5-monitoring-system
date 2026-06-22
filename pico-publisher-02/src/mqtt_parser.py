@@ -14,9 +14,19 @@ class MQTTPacketParser:
         data = bytearray()
 
         while len(data) < size:
-            chunk = sock.recv(size - len(data))
+            remaining_size = size - len(data)
+
+            if hasattr(sock, "read"):
+                chunk = sock.read(remaining_size)
+            else:
+                chunk = sock.recv(remaining_size)
+
+            if chunk is None:
+                continue
+
             if not chunk:
                 raise OSError("Socket closed by broker")
+
             data.extend(chunk)
 
         return bytes(data)
@@ -104,3 +114,66 @@ class MQTTPacketParser:
         return {
             "reason_code": reason_code,
         }
+    
+    def _read_varint_from_bytes(self, data: bytes, start_index: int):
+        # citeste un variable byte integer dintr-un sir de bytes
+        multiplier = 1
+        value = 0
+        index = start_index
+
+        while True:
+            encoded_byte = data[index]
+            value += (encoded_byte & 0x7F) * multiplier
+            index += 1
+
+            if (encoded_byte & 0x80) == 0:
+                break
+
+            multiplier *= 128
+            if multiplier > 128 * 128 * 128:
+                raise ValueError("Malformed variable byte integer")
+
+        return value, index
+
+
+    def parse_publish(self, packet: dict) -> dict:
+        # parseaza un pachet publish primit de la broker
+        if packet["type"] != self.TYPE_PUBLISH:
+            raise ValueError("Expected PUBLISH")
+
+        body = packet["body"]
+        qos = (packet["flags"] & 0x06) >> 1
+
+        index = 0
+
+        # topic length
+        topic_length = int.from_bytes(body[index:index + 2], "big")
+        index += 2
+
+        # topic
+        topic = body[index:index + topic_length].decode("utf-8")
+        index += topic_length
+
+        packet_id = None
+
+        # pentru qos 1 si qos 2 exista packet id
+        if qos > 0:
+            packet_id = int.from_bytes(body[index:index + 2], "big")
+            index += 2
+
+        # mqtt v5 are properties length dupa topic/packet id
+        properties_length, index = self._read_varint_from_bytes(body, index)
+
+        # sar peste proprietati
+        index += properties_length
+
+        # restul este payload-ul
+        message = body[index:].decode("utf-8")
+
+        return {
+            "topic": topic,
+            "message": message,
+            "qos": qos,
+            "packet_id": packet_id
+        }
+

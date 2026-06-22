@@ -153,3 +153,52 @@ class MQTTPackets:
             props.extend(self._encode_utf8(str(value)))
 
         return bytes(props)
+    
+    def subscribe_packet(self, topic: str, qos: int, packet_id: int) -> bytes:
+        # construiesc pachetul subscribe pentru mqtt v5
+        packet = bytearray()
+
+        # fixed header pentru subscribe este 0x82
+        packet.append(0x82)
+
+        variable_header = bytearray()
+
+        # packet id, necesar pentru subscribe
+        variable_header.extend(packet_id.to_bytes(2, "big"))
+
+        # property length = 0 pentru ca nu trimit proprietati
+        variable_header.append(0x00)
+
+        payload = bytearray()
+
+        # topicul la care vreau sa ma abonez
+        payload.extend(len(topic).to_bytes(2, "big"))
+        payload.extend(topic.encode("utf-8"))
+
+        # optiunile de subscribe, aici doar qos-ul
+        payload.append(qos)
+
+        remaining_length = len(variable_header) + len(payload)
+
+        # la topicurile noastre lungimea incape intr-un singur byte
+        packet.append(remaining_length)
+
+        packet.extend(variable_header)
+        packet.extend(payload)
+
+        return bytes(packet)
+    
+    def puback_packet(self, packet_id: int) -> bytes:
+        # raspuns pentru publish primit cu qos 1
+        return bytes([0x40, 0x02]) + packet_id.to_bytes(2, "big")
+
+
+    def pubrec_packet(self, packet_id: int) -> bytes:
+        # primul raspuns pentru publish primit cu qos 2
+        return bytes([0x50, 0x02]) + packet_id.to_bytes(2, "big")
+
+
+    def pubcomp_packet(self, packet_id: int) -> bytes:
+        # ultimul raspuns pentru publish primit cu qos 2
+        return bytes([0x70, 0x02]) + packet_id.to_bytes(2, "big")
+

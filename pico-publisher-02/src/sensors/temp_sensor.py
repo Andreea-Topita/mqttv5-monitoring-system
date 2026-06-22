@@ -11,3 +11,5 @@ class TempSensor:
         temp = self.sensor.temperature()
         hum = self.sensor.humidity()
         return temp, hum
+
+

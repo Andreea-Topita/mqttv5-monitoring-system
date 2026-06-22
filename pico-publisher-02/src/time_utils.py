@@ -12,7 +12,7 @@ EPOCH_2000_OFFSET = 946684800
 
 
 def sync_time():
-    # sincronizeaza ora placii prin internet, folosind NTP
+    # sincronizeaza ora placii prin internet, folosind ntp
     # timestamp-ul trimis in SenML este cat mai apropiat de timpul real
     if ntptime is None:
         print("NTP not available. Using local Pico time.")
@@ -39,3 +39,4 @@ def get_unix_time():
         return int(current_time + EPOCH_2000_OFFSET)
 
     return int(current_time)
+
