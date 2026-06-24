@@ -17,14 +17,20 @@
   <div class="form-grid">
     <div class="field">
       <label>Topic</label>
-      <select [(ngModel)]="subscribeTopic">
+     <select
+        [(ngModel)]="subscribeTopic"
+        (ngModelChange)="onSelectionChanged()"
+      >
         <option *ngFor="let topic of topics" [value]="topic">{{ topic }}</option>
       </select>
     </div>
 
     <div class="field">
       <label>QoS</label>
-      <select [(ngModel)]="subscribeQos">
+      <select
+        [(ngModel)]="subscribeQos"
+        (ngModelChange)="onSelectionChanged()"
+      >
         <option [ngValue]="0">0</option>
         <option [ngValue]="1">1</option>
         <option [ngValue]="2">2</option>
@@ -35,22 +41,93 @@
   <div class="subscription-box">
     <div class="subscription-status">
       <span class="subscription-title">Selected topic</span>
+        <div
+          class="selected-topic-status"
+          [class.active]="
+            isSelectedTopicManagedAutomatically() ||
+            isSelectedTopicSubscribed() ||
+            isSelectedTopicCoveredByWildcard()
+          "
+        >
+          <span class="status-label">Subscription state</span>
 
-      <div class="selected-topic-status" [class.active]="isSelectedTopicSubscribed()">
-        <span class="status-label">Subscription state</span>
+          <strong *ngIf="isSelectedTopicManagedAutomatically()">
+            Managed automatically
+          </strong>
 
-        <strong>
-          {{ isSelectedTopicSubscribed() ? 'Subscribed' : 'Not subscribed' }}
-        </strong>
+          <strong
+            *ngIf="
+              !isSelectedTopicManagedAutomatically() &&
+              isSelectedTopicSubscribed()
+            "
+          >
+            Subscribed
+          </strong>
 
-        <span *ngIf="isSelectedTopicSubscribed()">
-          Current QoS {{ getSelectedTopicQos() }}
-        </span>
+          <strong
+            *ngIf="
+              !isSelectedTopicManagedAutomatically() &&
+              !isSelectedTopicSubscribed() &&
+              isSelectedTopicCoveredByWildcard()
+            "
+          >
+            Already included
+          </strong>
 
-        <span *ngIf="isSelectedTopicSubscribed() && !isSelectedTopicSubscribedWithSameQos()">
-          Selected QoS {{ subscribeQos }} will update the subscription
-        </span>
-      </div>
+          <strong
+            *ngIf="
+              !isSelectedTopicManagedAutomatically() &&
+              !isSelectedTopicSubscribed() &&
+              !isSelectedTopicCoveredByWildcard()
+            "
+          >
+            Not subscribed
+          </strong>
+
+          <span *ngIf="isSelectedTopicManagedAutomatically()">
+            Current QoS {{ getSelectedTopicQos() }}
+          </span>
+
+          <span class="subscription-coverage-note" *ngIf="isSelectedTopicManagedAutomatically()">
+            This subscription is required for automatic device monitoring.
+          </span>
+
+          <span
+            *ngIf="
+              !isSelectedTopicManagedAutomatically() &&
+              isSelectedTopicSubscribed()
+            "
+          >
+            Current QoS {{ getSelectedTopicQos() }}
+          </span>
+
+          <span
+            *ngIf="
+              !isSelectedTopicManagedAutomatically() &&
+              isSelectedTopicSubscribed() &&
+              !isSelectedTopicSubscribedWithSameQos()
+            "
+          >
+            Selected QoS {{ subscribeQos }} will update the subscription
+          </span>
+
+          <ng-container
+            *ngIf="
+              !isSelectedTopicManagedAutomatically() &&
+              !isSelectedTopicSubscribed()
+            "
+          >
+            <ng-container
+              *ngIf="getCoveringWildcardSubscription() as coveringSubscription"
+            >
+              <span class="subscription-coverage-note">
+                Messages from this topic are already received through
+                {{ coveringSubscription.filter }}
+                with QoS {{ coveringSubscription.qos }}.
+              </span>
+            </ng-container>
+          </ng-container>
+        </div>
     </div>
 
     <div class="subscription-list">
@@ -77,7 +154,16 @@
       class="primary-btn"
       type="button"
       (click)="subscribeToTopic()"
-      [disabled]="loading || !status?.connected || isSelectedTopicSubscribedWithSameQos()"
+      [disabled]="
+        loading ||
+        !status?.connected ||
+        isSelectedTopicManagedAutomatically() ||
+        isSelectedTopicSubscribedWithSameQos() ||
+        (
+          !isSelectedTopicSubscribed() &&
+          isSelectedTopicCoveredByWildcard()
+        )
+      "
     >
       Subscribe
     </button>
@@ -86,7 +172,12 @@
       class="ghost-btn"
       type="button"
       (click)="unsubscribeFromTopic()"
-      [disabled]="loading || !status?.connected || !isSelectedTopicSubscribed()"
+      [disabled]="
+        loading ||
+        !status?.connected ||
+        isSelectedTopicManagedAutomatically() ||
+        !isSelectedTopicSubscribed()
+      "
     >
       Unsubscribe
     </button>

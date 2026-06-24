@@ -1,7 +1,11 @@
-export const DASHBOARD_TOPICS = [
+export const AUTOMATIC_SUBSCRIPTION_FILTERS = [
   'licenta/+/status',
   'licenta/+/temperatura',
-  'licenta/+/umiditate',
+  'licenta/+/umiditate'
+];
+
+export const DASHBOARD_TOPICS = [
+  ...AUTOMATIC_SUBSCRIPTION_FILTERS,
   'licenta/pc/test',
   'licenta/pc/comenzi'
 ];

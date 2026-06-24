@@ -67,3 +67,16 @@
   font-size: 13px;
   font-weight: 700;
 }
+
+.subscription-coverage-note {
+  display: block;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid #c7d2fe;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+}

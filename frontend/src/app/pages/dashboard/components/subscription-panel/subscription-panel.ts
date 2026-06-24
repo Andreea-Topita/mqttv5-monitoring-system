@@ -7,6 +7,7 @@ import { StatusResponse } from '../../../../core/models/mqtt.models';
 import { getApiErrorMessage } from '../../../../core/utils/api-error.util';
 
 import {
+  AUTOMATIC_SUBSCRIPTION_FILTERS,
   DEFAULT_SUBSCRIBE_QOS,
   DEFAULT_SUBSCRIBE_TOPIC
 } from '../../dashboard.config';
@@ -14,7 +15,8 @@ import {
 import {
   getSubscriptionQos,
   hasSameSubscriptionQos,
-  isTopicSubscribed
+  isTopicSubscribed,
+  topicMatchesFilter
 } from '../../dashboard.helpers';
 
 @Component({
@@ -51,6 +53,22 @@ export class SubscriptionPanel {
       return;
     }
 
+    if (this.isSelectedTopicManagedAutomatically()) {
+      this.infoMessage =
+        'This subscription is managed automatically by the application.';
+      return;
+    }
+
+    const coveringSubscription = this.getCoveringWildcardSubscription();
+
+    // verificare suplimentara chiar daca butonul este dezactivat in interfata
+    if (!this.isSelectedTopicSubscribed() && coveringSubscription) {
+      this.infoMessage =
+        `This topic is already included through ${coveringSubscription.filter} ` +
+        `with QoS ${coveringSubscription.qos}.`;
+      return;
+    }
+
     this.loading = true;
 
     this.api.subscribe({ topic, qos }).subscribe({
@@ -78,6 +96,12 @@ export class SubscriptionPanel {
       return;
     }
 
+    if (this.isSelectedTopicManagedAutomatically()) {
+      this.infoMessage =
+        'This subscription is managed automatically and cannot be removed here.';
+      return;
+    }
+
     this.loading = true;
 
     this.api.unsubscribe({ topic }).subscribe({
@@ -95,19 +119,85 @@ export class SubscriptionPanel {
   }
 
   isSelectedTopicSubscribed(): boolean {
-    return isTopicSubscribed(this.status?.subscriptions ?? {}, this.subscribeTopic);
+    const topic = this.subscribeTopic.trim();
+
+    return isTopicSubscribed(
+      this.status?.subscriptions ?? {},
+      topic
+    );
   }
 
   isSelectedTopicSubscribedWithSameQos(): boolean {
+    const topic = this.subscribeTopic.trim();
+
     return hasSameSubscriptionQos(
       this.status?.subscriptions ?? {},
-      this.subscribeTopic,
+      topic,
       Number(this.subscribeQos)
     );
   }
 
   getSelectedTopicQos(): number | null {
-    return getSubscriptionQos(this.status?.subscriptions ?? {}, this.subscribeTopic);
+    const topic = this.subscribeTopic.trim();
+
+    return getSubscriptionQos(
+      this.status?.subscriptions ?? {},
+      topic
+    );
+  }
+
+  getCoveringWildcardSubscription(): {
+    filter: string;
+    qos: number;
+  } | null {
+    const topic = this.subscribeTopic.trim();
+
+    if (!topic) {
+      return null;
+    }
+
+    // daca topicul selectat este chiar un filtru wildcard
+    // verificarea lui se face ca abonare directa
+    if (topic.includes('+') || topic.includes('#')) {
+      return null;
+    }
+
+    const subscriptions = this.status?.subscriptions ?? {};
+
+    for (const [filter, qos] of Object.entries(subscriptions)) {
+      // abonarea exacta este verificata separat
+      if (filter === topic) {
+        continue;
+      }
+
+      // sunt verificate doar filtrele wildcard
+      if (!filter.includes('+') && !filter.includes('#')) {
+        continue;
+      }
+
+      if (topicMatchesFilter(filter, topic)) {
+        return {
+          filter,
+          qos: Number(qos)
+        };
+      }
+    }
+
+    return null;
+  }
+
+  isSelectedTopicCoveredByWildcard(): boolean {
+    return this.getCoveringWildcardSubscription() !== null;
+  }
+
+  isSelectedTopicManagedAutomatically(): boolean {
+    const topic = this.subscribeTopic.trim();
+
+    return AUTOMATIC_SUBSCRIPTION_FILTERS.includes(topic);
+  }
+
+  onSelectionChanged(): void {
+    this.clearNotifications();
   }
 
   private clearNotifications(): void {
