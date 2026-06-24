@@ -6,6 +6,12 @@ def connect_wifi(ssid, password, timeout=30):
     wlan = network.WLAN(network.STA_IF)
     wlan.active(True)
     time.sleep(1)
+    # dezactivam economisirea energiei pentru o conexiune mai stabila
+    try:
+        wlan.config(pm=network.WLAN.PM_NONE)
+        print("Wi-Fi power saving disabled")
+    except Exception as e:
+        print("Could not change Wi-Fi power mode:", e)
 
     if wlan.isconnected():
         print("Already connected:", wlan.ifconfig())

@@ -1,6 +1,5 @@
 import time
 import ujson as json
-import _thread
 from wifi import connect_wifi
 from mqtt_client import MQTTClientPico
 from temp_sensor import TempSensor
@@ -66,14 +65,13 @@ runtime_config = {
     "publish_qos": PUBLISH_QOS,
     "publish_interval": PUBLISH_INTERVAL
 }
-runtime_config_lock = _thread.allocate_lock()
 
 sensor = TempSensor(gpio_pin=20)
 client = None
 
 
 def handle_config_message(topic: str, message: str):
-    # primeste configurari venite de pe topicul licenta/<client_id>/config
+    # primeste configurari venite pe topicul licenta/<client_id>/config
     global config
 
     if topic != TOPIC_CONFIG:
@@ -88,29 +86,29 @@ def handle_config_message(topic: str, message: str):
     new_qos = data.get("publish_qos")
     new_interval = data.get("publish_interval")
 
-    runtime_config_lock.acquire()
-    try:
-        if new_qos is not None:
-            try:
-                new_qos = int(new_qos)
-                if new_qos in [0, 1, 2]:
-                    runtime_config["publish_qos"] = new_qos
-                    config["publish_qos"] = new_qos
-                    print("publish_qos updated to", new_qos)
-            except Exception:
-                pass
+    if new_qos is not None:
+        try:
+            new_qos = int(new_qos)
 
-        if new_interval is not None:
-            try:
-                new_interval = int(new_interval)
-                if new_interval > 0:
-                    runtime_config["publish_interval"] = new_interval
-                    config["publish_interval"] = new_interval
-                    print("publish_interval updated to", new_interval)
-            except Exception:
-                pass
-    finally:
-        runtime_config_lock.release()
+            if new_qos in [0, 1, 2]:
+                runtime_config["publish_qos"] = new_qos
+                config["publish_qos"] = new_qos
+                print("publish_qos updated to", new_qos)
+
+        except Exception as e:
+            print("invalid publish_qos:", e)
+
+    if new_interval is not None:
+        try:
+            new_interval = int(new_interval)
+
+            if new_interval > 0:
+                runtime_config["publish_interval"] = new_interval
+                config["publish_interval"] = new_interval
+                print("publish_interval updated to", new_interval)
+
+        except Exception as e:
+            print("invalid publish_interval:", e)
 
     try:
         save_config(config)
@@ -118,27 +116,39 @@ def handle_config_message(topic: str, message: str):
     except Exception as e:
         print("could not save config:", e)
         
+def wait_and_process_mqtt(seconds):
+    # asteapta pana la urmatoarea publicare
+    # in acest timp proceseaza mesajele mqtt primite
+    end_time = time.time() + seconds
+
+    while time.time() < end_time:
+        if not client.connected:
+            raise OSError("MQTT connection lost")
+
+        client.loop_once(timeout_ms=200)
+        client.ping()
         
 try:
     # conectare la reteaua Wi-Fi configurata
     try:
-        connect_wifi(SSID, PASSWORD)
+        wlan = connect_wifi(SSID, PASSWORD)
     except Exception as wifi_error:
         print("Wi-Fi error:", wifi_error)
         start_setup_portal("Wi-Fi connection failed. Please configure again.")
 
-    # sincronizam timpul dupa conectarea la Wi-Fi
-    try:
-        sync_time()
-    except Exception as time_error:
-        print("Time sync warning:", time_error)
+    # sincronizam ceasul placii dupa conectarea la Wi-Fi
+    # daca sincronizarea esueaza, aplicatia continua cu valoarea existenta in RTC
+    time_synchronized = sync_time(retries=3, retry_delay=2)
+
+    if not time_synchronized:
+        print("Time sync warning: using current RTC time.")
 
     # cream clientul MQTT folosind brokerul salvat in config.json
     client = MQTTClientPico(
         broker_ip=BROKER_IP,
         broker_port=BROKER_PORT,
         client_id=CLIENT_ID,
-        keep_alive=10,
+        keep_alive=30,
         will_topic=TOPIC_STATUS,
         will_payload="offline",
         will_qos=STATUS_QOS,
@@ -154,7 +164,10 @@ try:
         print("MQTT error:", mqtt_error)
         start_setup_portal("MQTT broker connection failed. Please check broker IP.")
 
-    client.start_receive_loop(handle_config_message)
+    # configuram functia care proceseaza mesajele de configurare
+    client.set_message_callback(handle_config_message)
+
+    # placa se aboneaza la propriul topic de configurare
     client.subscribe(TOPIC_CONFIG, qos=0)
     
     # la conectare publica online cu retain
@@ -176,21 +189,19 @@ try:
 
     
     while True:
-        runtime_config_lock.acquire()
-        try:
-            current_qos = runtime_config["publish_qos"]
-            current_interval = runtime_config["publish_interval"]
-        finally:
-            runtime_config_lock.release()
+        if not wlan.isconnected():
+            print("Wi-Fi connection lost")
+            raise OSError("Wi-Fi connection lost")
+        
+        current_qos = runtime_config["publish_qos"]
+        current_interval = runtime_config["publish_interval"]
 
         try:
             temp, hum = sensor.read()
         except Exception as sensor_error:
             print("Sensor read error:", sensor_error)
-
-            for _ in range(current_interval):
-                time.sleep(1)
-                client.ping()
+            
+            wait_and_process_mqtt(current_interval)
 
             continue
         
@@ -224,10 +235,8 @@ try:
         except Exception as mqtt_error:
             print("MQTT publish error:", mqtt_error)
             raise
-
-        for _ in range(current_interval):
-            time.sleep(1)
-            client.ping()
+        
+        wait_and_process_mqtt(current_interval)
 
 except Exception as e:
     print("Error:", e)

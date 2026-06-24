@@ -1,6 +1,11 @@
 import socket
 import time
-import _thread
+
+try:
+    import select
+except ImportError:
+    import uselect as select
+    
 from mqtt_packets import MQTTPackets
 from mqtt_parser import MQTTPacketParser
 try:
@@ -16,7 +21,7 @@ class MQTTClientPico:
         client_id: str,
         username: str = "",
         password: str = "",
-        keep_alive: int = 10,
+        keep_alive: int = 30,
         will_topic: str = None,
         will_payload: str = None,
         will_qos: int = 0,
@@ -37,7 +42,8 @@ class MQTTClientPico:
         self.will_user_properties = will_user_properties
         self.use_tls = use_tls
 
-        self.last_activity = time.time()
+        self.last_sent = time.time()
+        self.last_received = time.time()
         self.sock = None
         self.packet_builder = MQTTPackets()
         self.packet_parser = MQTTPacketParser()
@@ -45,43 +51,35 @@ class MQTTClientPico:
         self.packet_id = 1
         self.connected = False
         self.on_message_callback = None
-        self.receive_loop_running = False
-
-        self.ack_lock = _thread.allocate_lock()
-        self.send_lock = _thread.allocate_lock()
+        self.poller = None
+        
         self.received_acks = {}
-
-
+        
+    
     def _send_all(self, data: bytes):
-        self.send_lock.acquire()
+        total_sent = 0
 
-        try:
-            total_sent = 0
+        while total_sent < len(data):
+            remaining_data = data[total_sent:]
 
-            while total_sent < len(data):
-                remaining_data = data[total_sent:]
+            if hasattr(self.sock, "write"):
+                sent = self.sock.write(remaining_data)
+            else:
+                sent = self.sock.send(remaining_data)
 
-                if hasattr(self.sock, "write"):
-                    sent = self.sock.write(remaining_data)
-                else:
-                    sent = self.sock.send(remaining_data)
+            if sent is None:
+                raise OSError("Socket did not accept data")
 
-                if sent is None:
-                    sent = len(remaining_data)
+            if sent <= 0:
+                raise OSError("Socket connection broken")
 
-                if sent == 0:
-                    raise OSError("Socket connection broken")
+            total_sent += sent
 
-                total_sent += sent
+        self.last_sent = time.time()
 
-            self.last_activity = time.time()
-
-        finally:
-            self.send_lock.release()
-            
     def _read_packet(self) -> dict:
         packet = self.packet_parser.read_packet(self.sock)
-        self.last_activity = time.time()
+        self.last_received = time.time()
         return packet
 
     def _next_packet_id(self) -> int:
@@ -142,6 +140,9 @@ class MQTTClientPico:
 
         if connack["reason_code"] == 0x00:
             self.connected = True
+            
+            self.poller = select.poll()
+            self.poller.register(self.sock, select.POLLIN)
             print("CONNACK received")
         else:
             raise RuntimeError(
@@ -150,43 +151,52 @@ class MQTTClientPico:
                 )
             )
 
-    def _store_ack(self, packet_type: int, packet_id: int, reason_code: int = 0x00):
-        # salvez confirmarile primite de la broker
-        # publish/subscribe asteapta apoi confirmarea cu acelasi packet id
-        self.ack_lock.acquire()
-        try:
-            self.received_acks[(packet_type, packet_id)] = reason_code
-        finally:
-            self.ack_lock.release()
+    def _store_ack(
+        self,
+        packet_type: int,
+        packet_id: int,
+        reason_code: int = 0x00
+    ):
+        # salveaza confirmarea primita de la broker
+        self.received_acks[(packet_type, packet_id)] = reason_code
 
 
-    def _wait_for_ack(self, expected_type: int, expected_packet_id: int, timeout: int = 5):
-        # asteapta confirmarea pentru un anumit packet id
+    def _wait_for_ack(
+        self,
+        expected_type: int,
+        expected_packet_id: int,
+        timeout: int = 5
+    ):
+        # asteapta confirmarea care foloseste acelasi packet id
         start = time.time()
 
         while time.time() - start < timeout:
-            self.ack_lock.acquire()
-            try:
-                reason_code = self.received_acks.pop(
-                    (expected_type, expected_packet_id),
-                    None
-                )
-            finally:
-                self.ack_lock.release()
+            reason_code = self.received_acks.pop(
+                (expected_type, expected_packet_id),
+                None
+            )
 
             if reason_code is not None:
                 if reason_code >= 0x80:
                     raise RuntimeError(
-                        "Broker returned error reason code={}".format(reason_code)
+                        "Broker returned error reason code={}".format(
+                            reason_code
+                        )
                     )
+
                 return {
                     "packet_id": expected_packet_id,
                     "reason_code": reason_code
                 }
 
-            time.sleep(0.05)
+            # verifica daca brokerul a trimis un pachet
+            self.loop_once(timeout_ms=100)
 
-        raise RuntimeError("Timeout waiting for ack packet id {}".format(expected_packet_id))
+        raise RuntimeError(
+            "Timeout waiting for ack packet id {}".format(
+                expected_packet_id
+            )
+        )
 
     def publish(self, topic: str, message: str, qos: int = 0, retain: bool = False, user_properties=None):
         if not self.connected:
@@ -276,111 +286,127 @@ class MQTTClientPico:
 
         print("SUBACK received for topic", topic)
 
-
-    def start_receive_loop(self, on_message_callback):
-        # porneste firul care asculta mesajele primite de la broker
+    def set_message_callback(self, on_message_callback):
+        # salveaza functia apelata la primirea unui mesaj mqtt
         self.on_message_callback = on_message_callback
-        self.receive_loop_running = True
-
-        _thread.start_new_thread(self._receive_loop, ())
 
 
-    def _receive_loop(self):
-        # ruleaza in fundal si citeste pachetele venite de la broker
-        print("Receive loop started")
+    def _handle_packet(self, packet: dict):
+        # proceseaza un singur pachet primit de la broker
 
-        while self.connected and self.receive_loop_running:
-            try:
-                packet = self._read_packet()
+        if packet["type"] == self.packet_parser.TYPE_PINGRESP:
+            print("PINGRESP received")
+            return
 
-                if packet["type"] == self.packet_parser.TYPE_PINGRESP:
-                    print("PINGRESP received")
-                    continue
+        if packet["type"] == self.packet_parser.TYPE_DISCONNECT:
+            info = self.packet_parser.parse_disconnect(packet)
 
-                if packet["type"] == self.packet_parser.TYPE_DISCONNECT:
-                    info = self.packet_parser.parse_disconnect(packet)
-                    print("Broker sent DISCONNECT, reason code={}".format(info["reason_code"]))
-                    self.connected = False
-                    break
+            print(
+                "Broker sent DISCONNECT, reason code={}".format(
+                    info["reason_code"]
+                )
+            )
 
-                if packet["type"] in [
-                    self.packet_parser.TYPE_PUBACK,
-                    self.packet_parser.TYPE_PUBREC,
-                    self.packet_parser.TYPE_PUBCOMP,
-                    self.packet_parser.TYPE_SUBACK
-                ]:
-                    ack = self.packet_parser.parse_ack(packet, packet["type"])
-                    self._store_ack(
-                        packet_type=packet["type"],
-                        packet_id=ack["packet_id"],
-                        reason_code=ack["reason_code"]
-                    )
-                    continue
+            self.connected = False
+            return
 
-                if packet["type"] == self.packet_parser.TYPE_PUBLISH:
-                    publish_info = self.packet_parser.parse_publish(packet)
+        if packet["type"] == self.packet_parser.TYPE_SUBACK:
+            # suback are o structura diferita fata de celelalte confirmari
+            ack = self.packet_parser.parse_suback(packet)
 
-                    topic = publish_info["topic"]
-                    message = publish_info["message"]
-                    qos = publish_info["qos"]
-                    packet_id = publish_info["packet_id"]
+            self._store_ack(
+                packet_type=packet["type"],
+                packet_id=ack["packet_id"],
+                reason_code=ack["reason_code"]
+            )
+            return
 
-                    print("config publish received")
-                    print("topic:", topic)
-                    print("message:", message)
+        if packet["type"] in [
+            self.packet_parser.TYPE_PUBACK,
+            self.packet_parser.TYPE_PUBREC,
+            self.packet_parser.TYPE_PUBCOMP
+        ]:
+            # proceseaza confirmarile pentru publicare
+            ack = self.packet_parser.parse_ack(
+                packet,
+                packet["type"]
+            )
 
-                    if self.on_message_callback:
-                        self.on_message_callback(topic, message)
+            self._store_ack(
+                packet_type=packet["type"],
+                packet_id=ack["packet_id"],
+                reason_code=ack["reason_code"]
+            )
+            return   
 
-                    if qos == 1 and packet_id is not None:
-                        puback = self.packet_builder.puback_packet(packet_id)
-                        self._send_all(puback)
-                        print("PUBACK sent for config message")
+        if packet["type"] == self.packet_parser.TYPE_PUBLISH:
+            publish_info = self.packet_parser.parse_publish(packet)
 
-                    elif qos == 2 and packet_id is not None:
-                        pubrec = self.packet_builder.pubrec_packet(packet_id)
-                        self._send_all(pubrec)
-                        print("PUBREC sent for config message")
+            topic = publish_info["topic"]
+            message = publish_info["message"]
+            qos = publish_info["qos"]
+            packet_id = publish_info["packet_id"]
 
-                    continue
+            print("config publish received")
+            print("topic:", topic)
+            print("message:", message)
 
-                if packet["type"] == self.packet_parser.TYPE_PUBREL:
-                    ack = self.packet_parser.parse_ack(
-                        packet,
-                        self.packet_parser.TYPE_PUBREL
-                    )
+            if self.on_message_callback:
+                self.on_message_callback(topic, message)
 
-                    pubcomp = self.packet_builder.pubcomp_packet(ack["packet_id"])
-                    self._send_all(pubcomp)
-                    print("PUBCOMP sent for config message")
-                    continue
-                
-            except OSError as e:
-                error_code = e.args[0] if len(e.args) > 0 else None
+            if qos == 1 and packet_id is not None:
+                puback = self.packet_builder.puback_packet(packet_id)
+                self._send_all(puback)
+                print("PUBACK sent for config message")
 
-                # Unele versiuni MicroPython întorc 110,
-                # iar altele întorc -110 pentru timeout.
-                if error_code in (110, -110):
-                    time.sleep(0.05)
-                    continue
+            elif qos == 2 and packet_id is not None:
+                pubrec = self.packet_builder.pubrec_packet(packet_id)
+                self._send_all(pubrec)
+                print("PUBREC sent for config message")
 
-                print("receive loop os error:", e)
-                self.connected = False
-                break
-                
-            except Exception as e:
-                print("receive loop error:", e)
-                self.connected = False
-                break
+            return
 
-        print("Receive loop stopped")
+        if packet["type"] == self.packet_parser.TYPE_PUBREL:
+            ack = self.packet_parser.parse_ack(
+                packet,
+                self.packet_parser.TYPE_PUBREL
+            )
 
+            pubcomp = self.packet_builder.pubcomp_packet(
+                ack["packet_id"]
+            )
+
+            self._send_all(pubcomp)
+            print("PUBCOMP sent for config message")
+
+
+    def loop_once(self, timeout_ms=0):
+        # verifica daca brokerul a trimis date fara sa blocheze aplicatia
+
+        if not self.connected or self.poller is None:
+            return False
+
+        events = self.poller.poll(timeout_ms)
+
+        if not events:
+            return False
+
+        try:
+            packet = self._read_packet()
+            self._handle_packet(packet)
+            return True
+
+        except Exception:
+            self.connected = False
+            raise
 
     def ping(self):
         if not self.connected:
             return
 
-        idle_time = time.time() - self.last_activity
+        # keep alive se raporteaza la ultimul pachet trimis de client
+        idle_time = time.time() - self.last_sent
+
         if idle_time < self.keep_alive:
             return
 
@@ -393,12 +419,25 @@ class MQTTClientPico:
         try:
             if self.sock:
                 try:
-                    self._send_all(self.packet_builder.disconnect_packet())
-                except:
+                    self._send_all(
+                        self.packet_builder.disconnect_packet()
+                    )
+                except Exception:
                     pass
+
+                try:
+                    if self.poller:
+                        self.poller.unregister(self.sock)
+                except Exception:
+                    pass
+
                 self.sock.close()
-        except:
+
+        except Exception:
             pass
+
         finally:
             self.connected = False
             self.sock = None
+            self.poller = None
+
