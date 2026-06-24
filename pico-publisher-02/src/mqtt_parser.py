@@ -135,7 +135,40 @@ class MQTTPacketParser:
 
         return value, index
 
+    def parse_suback(self, packet: dict) -> dict:
+        # parseaza raspunsul primit pentru subscribe
+        if packet["type"] != self.TYPE_SUBACK:
+            raise ValueError("Expected SUBACK")
 
+        body = packet["body"]
+
+        # suback trebuie sa contina packet id property length si reason code
+        if len(body) < 4:
+            raise ValueError("Invalid SUBACK")
+
+        # primii doi octeti reprezinta identificatorul pachetului
+        packet_id = int.from_bytes(body[0:2], "big")
+
+        # dupa packet id urmeaza lungimea proprietatilor mqtt v5
+        properties_length, index = self._read_varint_from_bytes(
+            body,
+            2
+        )
+
+        # sarim peste proprietatile primite
+        index += properties_length
+
+        # dupa proprietati trebuie sa existe rezultatul abonarii
+        if index >= len(body):
+            raise ValueError("SUBACK does not contain a reason code")
+
+        reason_code = body[index]
+
+        return {
+            "packet_id": packet_id,
+            "reason_code": reason_code
+        }
+    
     def parse_publish(self, packet: dict) -> dict:
         # parseaza un pachet publish primit de la broker
         if packet["type"] != self.TYPE_PUBLISH:
