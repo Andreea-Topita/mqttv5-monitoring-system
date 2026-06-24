@@ -25,13 +25,21 @@ export class LiveMessagesPanel {
   @Output() clearMessagesClicked = new EventEmitter<void>();
 
   get liveTopicOptions(): string[] {
-    return this.topics.filter((topic) =>
-      topic.includes('/status') ||
-      topic.includes('/temperatura') ||
-      topic.includes('/umiditate')
+    const availableTopics = this.topics.filter(
+      (topic) => !topic.endsWith('/config')
     );
-  }
 
+    if (
+      this.activeMessageTopic &&
+      !this.activeMessageTopic.endsWith('/config') &&
+      !availableTopics.includes(this.activeMessageTopic)
+    ) {
+      return [...availableTopics, this.activeMessageTopic];
+    }
+
+    return availableTopics;
+  }
+  
   setActiveTopic(topic: string): void {
     this.activeMessageTopicChange.emit(topic);
   }
