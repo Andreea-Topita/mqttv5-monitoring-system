@@ -94,12 +94,12 @@ class MQTTClientPico:
     def connect(self):
         raw_sock = socket.socket()
 
-        # Timeout folosit doar pentru stabilirea conexiunii TCP.
+        # Timeout folosit doar pentru stabilirea conexiunii TCP
         raw_sock.settimeout(10)
         raw_sock.connect((self.broker_ip, self.broker_port))
 
-        # După conectare revenim la modul blocking.
-        # Altfel socketul TLS moștenește timeoutul și produce eroarea -110.
+        # Dupa conectare revenim la modul blocking
+        # Altfel socketul TLS mosteneste timeoutul si produce eroarea -110
         raw_sock.settimeout(None)
 
         if self.use_tls:

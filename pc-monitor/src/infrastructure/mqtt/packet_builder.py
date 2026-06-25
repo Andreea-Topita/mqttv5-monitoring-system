@@ -88,7 +88,7 @@ class PacketBuilder:
         elif qos == 2:
             flags |= 0x04       #QoS 2 (bit 2)
         elif qos != 0:
-            raise ValueError("Nivel QoS invalid. Trebuie să fie 0, 1 sau 2.")
+            raise ValueError("Nivel QoS invalid. Trebuie sa fie 0, 1 sau 2.")
         
         if retain:
             flags |= 0x01  # Seteaza RETAIN flag (bit 0)
