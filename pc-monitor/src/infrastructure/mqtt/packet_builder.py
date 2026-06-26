@@ -117,7 +117,7 @@ class PacketBuilder:
         return packet
     
     def PUBACK(self,packet_id,reason_code=0x00,properties=None):
-        #A PUBACK packet is the response to a PUBLISH packet with QoS 1.
+        #A PUBACK packet is the response to a PUBLISH packet with QoS 1
         packet = bytearray()
         
         #FIXED HEADER 
@@ -192,7 +192,7 @@ class PacketBuilder:
         packet.extend(remaining_length.to_bytes(1, 'big'))
 
         #VARIABLE HEADER
-        #packet identifier from the PUBREC packet that is being acknowledged,
+        #packet identifier from the PUBREC packet that is being acknowledged
         packet.extend(packet_id.to_bytes(2, 'big'))
 
         #reason code
@@ -309,7 +309,7 @@ class PacketBuilder:
         packet.extend(packet_id.to_bytes(2,'big'))
 
         #properties
-        #Property Length 0x00 daca nu există
+        #Property Length 0x00 daca nu exista
         packet.extend(b'\x00')  #byte 3
 
         #PAYLOAD

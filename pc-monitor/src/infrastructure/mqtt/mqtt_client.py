@@ -263,8 +263,8 @@ class MQTTClient:
     def conectare_broker(self, broker_address, broker_port):
         try:
             #socket TCP, Ipv4 
-            raw_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            raw_socket.connect((broker_address, broker_port))
+            tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            tcp_socket.connect((broker_address, broker_port))
 
             if self.use_tls:
                 if self.tls_insecure:
@@ -273,17 +273,17 @@ class MQTTClient:
                     context = ssl.create_default_context(cafile=self.ca_cert_path)
 
                 self.socket = context.wrap_socket(
-                    raw_socket,
+                    tcp_socket,
                     server_hostname=broker_address
                 )
 
                 print("Conectat la broker MQTT prin TLS.")
             else:
-                self.socket = raw_socket
+                self.socket = tcp_socket
                 print("Conectat la broker MQTT prin TCP simplu.")
 
 
-            #pachet CONNECT 
+            # construirea si transmiterea pachetelui CONNECT
             connect_packet = self.encoder.CONNECT(
                 self.client_id,
                 self.lw_topic,
@@ -306,7 +306,8 @@ class MQTTClient:
             if self.connected:
                 #thread pentru PINGREQ, pentru a verifica daca brokerul este inca activ si pentru a mentine conexiunea
                 threading.Thread(target=self.pingreq).start()
-                #pt mentinerea conexiunii mqtt si ar trb sa ruleze cat timp conexiunea este activa
+                #pt mentinerea conexiunii mqtt, fir separat pentru Keep Alive
+                #trimitere pingreq la intervale regulate pentru a mentine conexiunea activa
 
         except Exception as e:
             self.connected = False
