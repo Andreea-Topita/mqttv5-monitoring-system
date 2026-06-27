@@ -4,6 +4,7 @@ from sqlalchemy.sql import func
 from src.infrastructure.database.connection import Base
 
 
+# pastreaza istoricul conectarilor si deconectarilor clientului mqtt
 class ConnectionEvent(Base):
     __tablename__ = "connection_events"
 
@@ -11,5 +12,5 @@ class ConnectionEvent(Base):
     client_id = Column(String(100), nullable=False)
     broker_address = Column(String(255), nullable=False)
     broker_port = Column(Integer, nullable=False)
-    event_type = Column(String(30), nullable=False)
+    event_type = Column(String(30), nullable=False) #connect/disconnect
     created_at = Column(DateTime(timezone=False), server_default=func.now(), nullable=False)

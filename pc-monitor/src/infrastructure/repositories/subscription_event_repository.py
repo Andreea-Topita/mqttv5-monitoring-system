@@ -1,7 +1,7 @@
 from src.infrastructure.database.session_manager import session_scope
 from src.infrastructure.models.subscription_event import SubscriptionEvent
 
-
+# eveniment de abonare sau dezabonare la un topic, cu qos si actiunea (subscribe sau unsubscribe)
 class SubscriptionEventRepository:
     def add_event(
         self,

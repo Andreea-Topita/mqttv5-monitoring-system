@@ -96,6 +96,7 @@ class ConnectionService:
             for topic_filter, qos in DEFAULT_DEVICE_SUBSCRIPTIONS.items():
                 try:
                     self.runtime.client.subscribe(topic_filter, qos)
+                    # salveaza in memoria aplicatiei faptul ca abonamentul e activ 
                     self.runtime.set_subscription(topic_filter, qos)
                     print(f"Auto-subscribed to {topic_filter} with QoS {qos}.")
                 except Exception as subscribe_error:
@@ -139,6 +140,9 @@ class ConnectionService:
         self.runtime.client = None
         self.runtime.clear_subscriptions()
 
+    # returneaza statusul curent al conexiunii, periodic publishing, 
+    # abonamente si dispozitive, iar frontend ul poate folosi aceste informatii 
+    # pentru a afisa starea curenta a aplicatiei
     def get_status(self):
         return {
             "connected": self.runtime.connected,

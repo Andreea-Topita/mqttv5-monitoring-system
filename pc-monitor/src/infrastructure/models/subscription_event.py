@@ -3,12 +3,12 @@ from sqlalchemy.sql import func
 
 from src.infrastructure.database.connection import Base
 
-
+# pastreaza istoricul operatiilor de abonare si dezabonare la topicurile mqtt
 class SubscriptionEvent(Base):
     __tablename__ = "subscription_events"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     topic = Column(String(255), nullable=False)
     qos = Column(SmallInteger, nullable=False)
-    action = Column(String(20), nullable=False)
+    action = Column(String(20), nullable=False) # subscribe sau unsubscribe
     created_at = Column(DateTime(timezone=False), server_default=func.now(), nullable=False)

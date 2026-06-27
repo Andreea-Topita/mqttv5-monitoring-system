@@ -1,7 +1,7 @@
 from src.domain.entities.user_record import UserRecord
 from src.infrastructure.models.user import User
 
-
+# USER legat de sesiune SqlAlchemy, UserRecord legat de domeniu
 def to_user_record(item: User) -> UserRecord:
     return UserRecord(
         id=item.id,

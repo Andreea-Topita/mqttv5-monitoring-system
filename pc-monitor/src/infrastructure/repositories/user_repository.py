@@ -15,23 +15,27 @@ class UserRepository:
         email: str,
         password_hash: str
     ) -> UserRecord:
+        # deschidere sesiune si tranzactie
         with session_scope() as db:
+            # creare obiect sql alchemy user
             item = User(
                 username=username,
                 email=email,
                 password_hash=password_hash
             )
 
+            # insert in baza de date
             db.add(item)
-            db.flush()
-            db.refresh(item)
+            db.flush() # trimite insert catre bd
+            db.refresh(item) # citeste valorile generate de bd, adica id si created_at
 
+            # returneaza obiectul salvat ca un UserRecord
             return to_user_record(item)
 
     def get_by_id(self, user_id: int) -> Optional[UserRecord]:
         with session_scope() as db:
             stmt = select(User).where(User.id == user_id)
-            item = db.execute(stmt).scalar_one_or_none()
+            item = db.execute(stmt).scalar_one_or_none() # un singur obiect user sau none daca nu exista
 
             if item is None:
                 return None

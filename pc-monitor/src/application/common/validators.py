@@ -9,12 +9,15 @@ from src.domain.exceptions import (
 
 MQTT_ROOT_TOPIC = "licenta"
 
+# pentru a analiza topicul primit, extrage client_id si categoria, nu interpreteaza +
 DEVICE_TOPIC_PATTERN = re.compile(
     r"^licenta/(?P<client_id>[A-Za-z0-9_-]+)/(?P<category>[A-Za-z0-9_-]+)$"
 )
 
+# pentru a valida id-ul dispozitivului
 DEVICE_CLIENT_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
 
+# categorie, nume, unitate 
 SENSOR_MEASUREMENT_CONFIG = {
     "temperatura": {
         "measurement_name": "temperature",
@@ -30,6 +33,8 @@ SENSOR_MEASUREMENT_CONFIG = {
     }
 }
 
+# abonare automata la topicurile de baza pentru toate dispozitivele 
+# cu QoS 2
 DEFAULT_DEVICE_SUBSCRIPTIONS = {
     "licenta/+/status": 2,
     "licenta/+/temperatura": 2,
@@ -61,7 +66,6 @@ def validate_device_client_id(client_id: str):
             "Device client ID may contain only letters, digits, _ and -."
         )
 
-
 def parse_device_topic(topic: str) -> Optional[dict]:
     if not topic:
         return None
@@ -80,11 +84,12 @@ def build_device_topic(client_id: str, category: str) -> str:
     validate_device_client_id(client_id)
     return f"{MQTT_ROOT_TOPIC}/{client_id}/{category}"
 
-
+# build topicul de configuratie pentru un dispozitiv, folosind client_id
 def build_device_config_topic(client_id: str) -> str:
     return build_device_topic(client_id, "config")
 
-
+# verificam daca topicul este unul de tip dispozitiv
+# adica incepe cu licenta/ si are un client_id valid
 def is_sensor_topic(topic: str) -> bool:
     info = parse_device_topic(topic)
 
@@ -92,7 +97,6 @@ def is_sensor_topic(topic: str) -> bool:
         return False
 
     return info["category"] in SENSOR_MEASUREMENT_CONFIG
-
 
 def is_status_topic(topic: str) -> bool:
     info = parse_device_topic(topic)
@@ -111,7 +115,8 @@ def get_sensor_config_by_topic(topic: str):
 
     return SENSOR_MEASUREMENT_CONFIG.get(info["category"])
 
-
+# validarea masuratorilor primite de la senzori
+# conform configuratiei pentru fiecare categorie
 def is_valid_sensor_measurement(
     topic: str,
     measurement_name: str,

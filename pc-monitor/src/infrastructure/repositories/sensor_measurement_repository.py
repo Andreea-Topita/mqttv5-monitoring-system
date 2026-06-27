@@ -22,6 +22,7 @@ class SensorMeasurementRepository:
         mqtt_message_id: Optional[int] = None
     ) -> SensorMeasurementRecord:
         with session_scope() as db:
+            # creare obiect sql alchemy SensorMeasurement
             item = SensorMeasurement(
                 mqtt_message_id=mqtt_message_id,
                 topic=topic,
@@ -49,11 +50,12 @@ class SensorMeasurementRepository:
         source_client_id: Optional[str] = None,
         limit: int = 50
     ) -> list[SensorMeasurementRecord]:
-        limit = max(1, min(limit, 500))
+        limit = max(1, min(limit, 500)) # limitul maxim de rezultate returnate este 500, minim 1
 
         with session_scope() as db:
             filters = []
 
+            # filtre adaugate doar daca parametrul a fost primit
             if measurement_name:
                 filters.append(SensorMeasurement.measurement_name == measurement_name)
 
@@ -65,16 +67,22 @@ class SensorMeasurementRepository:
 
             stmt = select(SensorMeasurement)
 
+            # where measurement = temp and source client id = pico temp 01
             if filters:
                 stmt = stmt.where(*filters)
 
+
+            # sortare, cele mai recente masuratori primele
+            # limitare la numarul de rezultate cerut
             stmt = stmt.order_by(
                 SensorMeasurement.measured_at.desc(),
                 SensorMeasurement.id.desc()
             ).limit(limit)
 
+            # executie query si obtinere rezultate in lista
             items = db.execute(stmt).scalars().all()
 
+            # mapare, fiecare model sql achemy in record domain 
             records = [
                 to_sensor_measurement_record(item)
                 for item in items

@@ -330,7 +330,7 @@ class PacketBuilder:
     
     def DISCONNECT(self):
         #final packet sent from the Client or the Server
-        #the client or servwr may send a disconnect packet before closing the connection
+        #the client or server may send a disconnect packet before closing the connection
         #If the Connection is closed without the Client first sending a DISCONNECT packet with Reason Code 0x00 and the Connection has a Will Message, the Will Message is published
         #The Client or Server sending the DISCONNECT packet MUST use one of the DISCONNECT Reason Code values 
         
@@ -365,7 +365,7 @@ class PacketBuilder:
         #authentication method
         if auth_method:
             properties.append(0x15)  
-             #name of the authentication method]
+             #name of the authentication method
             method_encoded = auth_method.encode('utf-8')
             properties.extend(len(method_encoded).to_bytes(2, 'big'))  #lungime
             properties.extend(method_encoded)

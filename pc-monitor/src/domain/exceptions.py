@@ -1,12 +1,20 @@
+# clasa de baza pentru toare erorile aplicatiei
+# mosteneste exception, deci obiectele pot fi aruncate prin raise, try except, etc
+
 class AppError(Exception):
+    # cod http implicit asociat erorii, clasele il pot suprascrie
     status_code = 400
+    
+    # clasele copil suprascriu codul de eroare specific
     error_code = "APP_ERROR"
 
+    # constructor primeste mesajul concret care explica eroarea
     def __init__(self, message: str):
+        # apeleaza constructorul clasei exception si ii transmite mesajul
         self.message = message
         super().__init__(message)
 
-
+# serviciul exprima direct problema si handlerul global din API transforma exceptia intr un raspuns http
 class BusinessValidationError(AppError):
     status_code = 400
     error_code = "VALIDATION_ERROR"
