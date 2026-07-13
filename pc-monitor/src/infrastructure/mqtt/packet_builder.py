@@ -5,7 +5,6 @@ class PacketBuilder:
         packet = bytearray()
         packet.extend(b'\x10')  #CONNECT = 1, Flag = 0 (0001 0000)
         packet.extend(b'\x00')  #placeholder pentru lungimea ramasa
-        #remaining length field = the length of the variable header plus the length of the payload
 
         #VARIABLE HEADER
         #protocol name = MQTT
@@ -32,7 +31,7 @@ class PacketBuilder:
 
         packet.append(connect_flags)
 
-        #sa expire la un nr de secunde ; sa trimita un nou pachet ;
+        #sa expire la un nr de secunde
         #repornirea time 
         packet.extend(int(keep_alive).to_bytes(2, 'big'))  #Keep Alive: 10 sec(2 octeti, big-endian)
 
@@ -43,8 +42,7 @@ class PacketBuilder:
         #PAYLOAD
         #client id
         packet.extend((len(client_id)).to_bytes(2, 'big'))   #Lungimea Client ID
-        packet.extend(client_id.encode('utf-8',errors='replace'))    #Client ID folosind codificarea UTF-8
-        #replace= inlocuieste caracterele invalide cu ?
+        packet.extend(client_id.encode('utf-8',errors='replace'))    
 
         #LAST WILL TOPIC, MESSAGE
         if lw_topic is not None and lw_payload is not None:
@@ -74,11 +72,11 @@ class PacketBuilder:
         return packet
     
     def PUBLISH(self, packet_id, qos, topic, message, dup=0, retain=0):
-    # dup flag pentru re-delivery: 0 sau 1
-    # param retain: flag pentru a retine mesajul 0 sau 1
+        # dup flag pentru re-delivery: 0 sau 1
+        # param retain: flag pentru a retine mesajul 0 sau 1
         packet = bytearray()
     
-    # FIXED HEADER
+        # FIXED HEADER
         flags = 0x30  # PUBLISH = 3, bit 4 implicit 0 
     
         if dup:
@@ -97,10 +95,10 @@ class PacketBuilder:
         packet.append(0x00)   #remaining Length
 
         # VARIABLE HEADER
-        # Topic name
+        # topic name
         packet.extend((len(topic)).to_bytes(2, 'big'))  # Topic length
         packet.extend(topic.encode('utf-8'))            # Topic
-        # Packet Identifier (doar pentru QoS>0)
+        # packet identifier (doar pentru QoS>0)
         if qos > 0:
             packet.extend(packet_id.to_bytes(2, 'big'))
         
@@ -117,7 +115,6 @@ class PacketBuilder:
         return packet
     
     def PUBACK(self,packet_id,reason_code=0x00,properties=None):
-        #A PUBACK packet is the response to a PUBLISH packet with QoS 1
         packet = bytearray()
         
         #FIXED HEADER 
@@ -126,11 +123,11 @@ class PacketBuilder:
         #VARIABLE HEADER
         vh = bytearray()
 
-        #adaugam Packet ID-ul din PUBLISH
+        #adaugam packet id-ul din PUBLISH
         vh.extend(packet_id.to_bytes(2, 'big'))
 
-        #if you include reason code, you must also include properties length
-        #packet identifier from the PUBLISH packet that is being acknowledged
+        # if you include reason code, you must also include properties length
+        # packet identifier from the PUBLISH packet that is being acknowledged
         vh.append(reason_code)
 
         if properties:
@@ -219,7 +216,7 @@ class PacketBuilder:
         packet.append(0x02)    #Remaining Length 
 
         #VARIABLE HEADER
-        #Packet Identifier 
+        #packet Identifier 
         packet.extend(packet_id.to_bytes(2, 'big'))  
 
         return packet
@@ -261,17 +258,16 @@ class PacketBuilder:
         #BITS 3,2,1 and 0 of the Fixed Header of the SUBSCRIBE packet are reserved and MUST be set to 0,0,1 and 0 respectively
        
         #FIXED HEADER 
-        #0010 - bitii 3,2,1,0 de la Reserved  deci valoarea 2 (byte 1)
         packet=bytearray()
         packet.extend(b'\x82')
         #byte 2 remaining length
         packet.extend(b'\x00')
 
         #VARIABLE HEADER
-            #Packet Identifier MSB LSB - byte 1 and 2
+        #packet Identifier MSB LSB - byte 1 and 2
         packet.extend(packet_Id.to_bytes(2,'big'))
         #daca nu avem proprietati 
-        packet.extend(b'\x00')      #PropertyLength byte 3
+        packet.extend(b'\x00')
 
         #PAYLOAD
         #packet contains a list of Topic Filters indicating the Topics to which the Client wants to subscribe
@@ -335,7 +331,6 @@ class PacketBuilder:
         #The Client or Server sending the DISCONNECT packet MUST use one of the DISCONNECT Reason Code values 
         
         #FIXED HEADER
-        #byte 1 E0 ; byte 2 remaining length 00 -  close the connection normally
         #04 - disconnect with will message
         packet = bytearray()
         packet.extend(b'\xE0')
@@ -355,7 +350,7 @@ class PacketBuilder:
 
         #VARIABLE HEADER
         #reason code
-        # packet.extend(b'\x00')
+        #packet.extend(b'\x00')
         #sau poate fi 0x18= continue authentication 
         packet.append(reason_code)
 

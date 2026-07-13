@@ -132,7 +132,7 @@ def read_http_request(conn):
 
     return headers, body
 
-
+# metoda principala access point setup portal, care porneste pico w in modul access point si asteapta ca utilizatorul sa introduca setarile in formular
 def start_setup_portal(reason=""):
     # pornesc modul de configurare ap
     # in acest mod, pico w creeaza propria retea wi-fi si afiseaza pagina de configurare
@@ -172,7 +172,6 @@ def start_setup_portal(reason=""):
     print("Open: http://{}/".format(ip))
 
     # creez adresa pe care va asculta serverul http
-    # 0.0.0.0 inseamna ca serverul asculta pe toate interfetele disponibile
     # portul 80 este portul standard pentru http
     addr = socket.getaddrinfo("0.0.0.0", 80)[0][-1]
 

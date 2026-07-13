@@ -180,7 +180,6 @@ class MQTTPackets:
 
         remaining_length = len(variable_header) + len(payload)
 
-        # la topicurile noastre lungimea incape intr-un singur byte
         packet.append(remaining_length)
 
         packet.extend(variable_header)

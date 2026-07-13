@@ -24,6 +24,7 @@ class MonitorFacade:
         self.message_service = message_service
         self.sensor_measurement_service = sensor_measurement_service
 
+    # api apeleaza monitor_serv connect -> monitor facade trimite mai departe catre connection_service connect, care se ocupa de conectarea la broker
     # grupeaza metodele din celelalte servicii, astfel incat rutele sa aiba o interfata unica
     def connect(self, *args, **kwargs):
         return self.connection_service.connect(*args, **kwargs)
@@ -92,3 +93,5 @@ class MonitorFacade:
             source_client_id=source_client_id,
             limit=limit
         )
+    
+# simplifica accesul la serviciile aplicatiei, rutele nu trebuie sa stie despre runtime sau despre celelalte servicii, ci doar despre monitor_facade

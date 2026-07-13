@@ -55,7 +55,7 @@ class MQTTClientPico:
         
         self.received_acks = {}
         
-    
+    # trimite toti octetii de pe socket
     def _send_all(self, data: bytes):
         total_sent = 0
 
@@ -77,6 +77,7 @@ class MQTTClientPico:
 
         self.last_sent = time.time()
 
+    # citeste un pachet de la broker si returneaza un dictionar cu informatiile
     def _read_packet(self) -> dict:
         packet = self.packet_parser.read_packet(self.sock)
         self.last_received = time.time()
@@ -94,12 +95,12 @@ class MQTTClientPico:
     def connect(self):
         raw_sock = socket.socket()
 
-        # Timeout folosit doar pentru stabilirea conexiunii TCP
+        # timeout folosit doar pentru stabilirea conexiunii TCP
         raw_sock.settimeout(10)
         raw_sock.connect((self.broker_ip, self.broker_port))
 
-        # Dupa conectare revenim la modul blocking.
-        # Altfel socketul TLS mosteneste timeoutul si produce eroarea -110
+        # dupa conectare revenim la modul blocking
+        # altfel socketul TLS mosteneste timeoutul si produce eroarea -110
         raw_sock.settimeout(None)
 
         if self.use_tls:
@@ -141,6 +142,7 @@ class MQTTClientPico:
         if connack["reason_code"] == 0x00:
             self.connected = True
             
+            # initializare poller pentru a putea verifica daca brokerul a trimis date fara sa blocheze aplicatia
             self.poller = select.poll()
             self.poller.register(self.sock, select.POLLIN)
             print("CONNACK received")
@@ -161,6 +163,7 @@ class MQTTClientPico:
         self.received_acks[(packet_type, packet_id)] = reason_code
 
 
+    # daca exista conformarea, asteapta pana la timeout pentru a o primi, altfel arunca exceptie
     def _wait_for_ack(
         self,
         expected_type: int,
@@ -392,6 +395,7 @@ class MQTTClientPico:
             return False
 
         try:
+            # citeste si proceseaza un singur pachet de la broker
             packet = self._read_packet()
             self._handle_packet(packet)
             return True
@@ -414,7 +418,7 @@ class MQTTClientPico:
         print("PINGREQ sent")
 
     # daca close reuseste sa trimita disconnect, inchidere e normala
-    # daca nu reusesti si conexiunea moare direct, brokerul considera ca e o cadere si publica mesajul de will 
+    # nu reusesti si conexiunea moare direct, brokerul considera ca e o cadere si publica mesajul de will 
     def close(self):
         try:
             if self.sock:

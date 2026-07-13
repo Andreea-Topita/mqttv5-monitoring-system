@@ -3,6 +3,8 @@ import socket
 import time
 import machine
 
+# portal de configurare pentru pico w, cand nu exista configuratie salvata
+
 from config_manager import save_config
 
 # numele retelei wi-fi create de pico w in modul access point

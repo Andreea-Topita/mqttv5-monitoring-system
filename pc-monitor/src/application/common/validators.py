@@ -70,6 +70,7 @@ def parse_device_topic(topic: str) -> Optional[dict]:
     if not topic:
         return None
 
+    # incarca sa extraga client_id si categoria din topicul de tip dispozitiv
     match = DEVICE_TOPIC_PATTERN.match(topic.strip())
     if not match:
         return None

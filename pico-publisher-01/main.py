@@ -27,12 +27,12 @@ SENML_BASE_NAME = "urn:dev:" + CLIENT_ID + ":"
 
 
 def build_senml_payload(measurement_name: str, unit: str, value) -> str:
-    # Construim payload SenML in format JSON
+    # construim payload SenML in format JSON
     # bn = base name / identificarea dispozitivului
-    # n  = numele masuratorii
-    # u  = unitatea de masura
-    # v  = valoarea numerica
-    # t  = timestamp Unix
+    # n = numele masuratorii
+    # u = unitatea de masura
+    # v = valoarea numerica
+    # t = timestamp Unix
     senml_record = [
         {
             "bn": SENML_BASE_NAME,
@@ -43,6 +43,7 @@ def build_senml_payload(measurement_name: str, unit: str, value) -> str:
         }
     ]
 
+    #transforma in string JSON si returneaza, ca sa poata fi trimis ca payload mqtt
     return json.dumps(senml_record)
 
 
@@ -125,6 +126,8 @@ def wait_and_process_mqtt(seconds):
         if not client.connected:
             raise OSError("MQTT connection lost")
 
+        # verificam daca brokerul a trimis date fara sa blocheze aplicatia
+        # daca nu sunt date, asteapta 200ms si trimite ping
         client.loop_once(timeout_ms=200)
         client.ping()
         
@@ -137,7 +140,7 @@ try:
         start_setup_portal("Wi-Fi connection failed. Please configure again.")
 
     # sincronizam ceasul placii dupa conectarea la Wi-Fi
-    # daca sincronizarea esueaza, aplicatia continua cu valoarea existenta in RTC
+    # daca sincronizarea esueaza, aplicatia continua cu valoarea existenta in RTC real time clock
     time_synchronized = sync_time(retries=3, retry_delay=2)
 
     if not time_synchronized:

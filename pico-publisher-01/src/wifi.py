@@ -30,6 +30,6 @@ def connect_wifi(ssid, password, timeout=30):
             raise RuntimeError("Wi-Fi connection timeout")
 
         time.sleep(1)
-
+    # afisez adresa ip obtinuta de pico w in reteaua wi-fi la care s-a conectat
     print("Wi-Fi connected:", wlan.ifconfig())
     return wlan

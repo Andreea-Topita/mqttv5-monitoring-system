@@ -22,7 +22,7 @@ from src.infrastructure.repositories.sensor_measurement_repository import (
 from src.application.services.auth_service import AuthService
 from src.infrastructure.repositories.user_repository import UserRepository
 
-# bootstrap = composition root
+# bootstrap = composition root, unde compui aplicatia
 # leaga toate componentele intre ele, creeaza instantele si le injecteaza acolo unde e nevoie
 runtime = MonitorRuntime()
 
@@ -47,6 +47,7 @@ message_service = MessageService(
     sensor_measurement_service=sensor_measurement_service
 )
 
+# legatura dintre clientul mqtt si procesarea mesajelor primite, prin callback-ul handle_incoming_message din MessageService
 connection_service = ConnectionService(
     runtime=runtime,
     connection_event_repository=connection_event_repository,

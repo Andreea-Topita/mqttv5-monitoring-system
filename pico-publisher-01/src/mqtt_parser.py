@@ -209,3 +209,4 @@ class MQTTPacketParser:
             "qos": qos,
             "packet_id": packet_id
         }
+

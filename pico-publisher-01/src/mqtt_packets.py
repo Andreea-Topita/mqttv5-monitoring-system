@@ -1,4 +1,5 @@
 class MQTTPackets:
+    # transforma o lungime numerica in format varint, adica un sir de octeti in care fiecare octet are 7 biti de date si 1 bit de continuare
     def _encode_varint(self, value: int) -> bytes:
         encoded = bytearray()
 
@@ -7,7 +8,7 @@ class MQTTPackets:
             value //= 128          # muta mai departe ce a ramas din valoare
 
             if value > 0: 
-                digit |= 0x80   # daca a mai ramas ceva, seteaza bitul de continuare
+                digit |= 0x80   # daca a mai ramas ceva, seteaza bitul de continuare, val 1 mai urmeaza un octet, val 0 acesta e ultimul octet
 
             encoded.append(digit)
 
@@ -142,6 +143,8 @@ class MQTTPackets:
         return b"\xE0\x00"
     
     def _encode_user_properties(self, user_properties):
+        # transforma dictionarul de proprietati intr o secventa de octeti
+        # fiecare proprietate este reprezentata de un octet 0x26, urmat de lungimea cheii si valoarea cheii, apoi lungimea valorii si valoarea valorii
         props = bytearray()
 
         if not user_properties:
@@ -180,7 +183,6 @@ class MQTTPackets:
 
         remaining_length = len(variable_header) + len(payload)
 
-        # la topicurile noastre lungimea incape intr-un singur byte
         packet.append(remaining_length)
 
         packet.extend(variable_header)

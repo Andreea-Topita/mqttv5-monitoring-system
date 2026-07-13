@@ -7,7 +7,7 @@ from src.infrastructure.repositories.subscription_event_repository import (
     SubscriptionEventRepository
 )
 
-
+# abonari si dezabonari la topicuri, salvarea evenimentelor in baza de date
 class SubscriptionService:
     def __init__(
         self,
@@ -24,8 +24,10 @@ class SubscriptionService:
         validate_topic(topic)
         validate_qos(qos)
 
+        # abonare la topicul specificat cu qos-ul specificat, daca nu e deja abonat
         self.runtime.client.subscribe(topic, qos)
 
+        # adaugare topic in lista de abonamente, pentru a fi afisat in UI si pentru a fi folosit la salvarea mesajelor
         self.runtime.set_subscription(topic, qos)
 
         persist_safely(

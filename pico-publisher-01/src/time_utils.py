@@ -5,6 +5,7 @@ try:
 except ImportError:
     ntptime = None
 
+#se ocupa de timp 
 
 # diferenta exacta, in secunde, dintre 1970-01-01 si 2000-01-01
 # unele placi MicroPython folosesc anul 2000 ca timp de pornire pentru time.time()
@@ -12,7 +13,8 @@ EPOCH_2000_OFFSET = 946684800
 
 
 def sync_time():
-    # sincronizeaza ora placii prin internet, folosind NTP
+    # sincronizeaza ora placii prin internet, folosind NTP = network time protocol
+    # daca nu exista conexiune la internet, foloseste timpul local al placii
     # timestamp-ul trimis in SenML este cat mai apropiat de timpul real
     if ntptime is None:
         print("NTP not available. Using local Pico time.")

@@ -10,7 +10,7 @@ from src.infrastructure.repositories.sensor_measurement_repository import (
     SensorMeasurementRepository
 )
 
-
+# serviciul care se ocupa de masuratorile senzorilor, primeste mesajele mqtt de la MessageService, le decodeaza si le salveaza in baza de date
 class SensorMeasurementService:
     def __init__(
         self,
@@ -26,28 +26,33 @@ class SensorMeasurementService:
         mqtt_message_id: Optional[int] = None
     ) -> None:
         # salvam numeric doar mesajele de pe topicurile de senzori, statusul online/offline ramane doar in mqtt_messages
+        # daca topicul nu este de senzor, nu facem nimic
         if not is_sensor_topic(topic):
             return
 
+        # daca payload-ul nu este un json valid, nu facem nimic
         try:
             data = json.loads(payload)
         except json.JSONDecodeError:
             return
 
         # payload-ul SenML este o lista de inregistrari
+        # daca nu e o lista, nu facem nimic
         if not isinstance(data, list):
             return
 
         for record in data:
             if not isinstance(record, dict):
                 continue
-
+            
+            # extragerea campurilor din inregistrarea SenML, daca lipseste vreunul, trecem la urmatoarea inregistrare
             base_name = record.get("bn")
             measurement_name = record.get("n")
             unit = record.get("u")
             value = record.get("v")
             timestamp = record.get("t")
 
+            # validare daca lipseste vreun camp, trecem la urmatoarea inregistrare
             if measurement_name is None or unit is None or value is None or timestamp is None:
                 continue
 
@@ -69,6 +74,7 @@ class SensorMeasurementService:
                 ).replace(tzinfo=None)
             except (OverflowError, OSError, ValueError):
                 continue
+            # transform unix timestamp in datetime UTC, pentru a fi compatibil cu campul measured_at din baza de date
 
             self.sensor_measurement_repository.add_measurement(
                 topic=topic,

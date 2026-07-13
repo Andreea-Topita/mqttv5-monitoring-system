@@ -1,5 +1,6 @@
 import ujson as json
 
+# fisierul config.json de pe pico 
 # numele fisierului in care se salveaza configuratia pe pico w
 CONFIG_FILE = "config.json"
 

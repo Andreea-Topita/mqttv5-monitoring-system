@@ -94,12 +94,12 @@ class MQTTClientPico:
     def connect(self):
         raw_sock = socket.socket()
 
-        # Timeout folosit doar pentru stabilirea conexiunii TCP
+        # timeout folosit doar pentru stabilirea conexiunii TCP
         raw_sock.settimeout(10)
         raw_sock.connect((self.broker_ip, self.broker_port))
 
-        # Dupa conectare revenim la modul blocking
-        # Altfel socketul TLS mosteneste timeoutul si produce eroarea -110
+        # dupa conectare revenim la modul blocking
+        # altfel socketul TLS mosteneste timeoutul si produce eroarea -110
         raw_sock.settimeout(None)
 
         if self.use_tls:
@@ -414,7 +414,7 @@ class MQTTClientPico:
         print("PINGREQ sent")
 
     # daca close reuseste sa trimita disconnect, inchidere e normala
-    # daca nu reusesti si conexiunea moare direct, brokerul considera ca e o cadere si publica mesajul de will 
+    # nu reusesti si conexiunea moare direct, brokerul considera ca e o cadere si publica mesajul de will 
     def close(self):
         try:
             if self.sock:

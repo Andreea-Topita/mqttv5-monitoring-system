@@ -58,7 +58,7 @@ class PacketParser:
             return True
         return False
     
-    #####PT MESAJE
+    # pentru mesaje 
     def is_publish(self, packet: bytes) -> bool:
         return len(packet) > 0 and ((packet[0] >> 4) == 3)  #3 = PUBLISH
 

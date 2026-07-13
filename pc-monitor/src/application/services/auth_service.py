@@ -8,7 +8,7 @@ from src.domain.exceptions import (
 )
 from src.infrastructure.repositories.user_repository import UserRepository
 
-
+#serviciu pentru autentificare si autorizare, gestioneaza inregistrarea, autentificarea si obtinerea informatiilor despre utilizatorul curent
 class AuthService:
     def __init__(self, user_repository: UserRepository):
         self.user_repository = user_repository

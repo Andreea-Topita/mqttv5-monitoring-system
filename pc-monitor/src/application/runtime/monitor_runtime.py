@@ -12,6 +12,9 @@ from src.domain.entities.live_message import LiveMessage
 
 # starea live a aplicatiei : instanta client mqtt, daca pc e conectat sau nu la broker, daca periodic publish e activ sau nu, mesajele live
 # topicurile la care clientul pc e abonat ( cheie topic, valoare qos )
+
+# cu locck, deoarece mesajele mqtt sunt primite in thread separat, ajuta interfata sa afiseze mesajele live si lista dispozitivelor cunoscute,
+# cu statusul si capabilitatile lor, fara sa se modifice in acelasi timp din threadul care primeste mesajele mqtt
 class MonitorRuntime:
     def __init__(self):
         self.client = None
@@ -21,12 +24,14 @@ class MonitorRuntime:
         self.received_messages: list[LiveMessage] = []
         self.message_counter = 0
 
+        # abonarile active si dispozitivele cunoscute, cu statusul lor si capabilitatile lor
         self.subscriptions: dict[str, int] = {}
         self.devices: dict[str, dict] = {}
 
         # sa nu se modifice lista de mesaje sau dictionarul de subscriptii
         # in timp ce sunt accesate din threaduri diferite
         self.lock = threading.Lock()
+        # lock pentru ca mesajele mqtt vin din thread separat
 
         self.client_id = ""
         self.broker_address = ""
@@ -83,12 +88,13 @@ class MonitorRuntime:
 
         return messages
 
+    # daca un topic se potriveste cu un topic filter, adica daca topicul este un subtopic al topicului filter, sau daca topicul este exact topicul filter
     def _topic_matches_filter(self, topic_filter: str, topic: str) -> bool:
-        filter_parts = topic_filter.split("/")
+        filter_parts = topic_filter.split("/")      # ["licenta", "+", "temperatura"] 
         topic_parts = topic.split("/")
 
         for index, part in enumerate(filter_parts):
-            if part == "#":
+            if part == "#":     # se potriveste orice subtopic, deci daca am ajuns la #, inseamna ca topicul se potriveste cu topic filter
                 return True
 
             if index >= len(topic_parts):
@@ -169,12 +175,14 @@ class MonitorRuntime:
                     if capability not in device["capabilities"]:
                         device["capabilities"].append(capability)
 
+    # se apeleaza cand vine un mesaj mqtt
     def update_device_from_message(
         self,
         topic: str,
         message: str,
         source_client_id: Optional[str] = None
     ):
+        # verific daca topicul este de tip dispozitiv, adica incepe cu licenta/ si are un client_id valid
         topic_info = parse_device_topic(topic)
 
         if topic_info is None:
@@ -186,13 +194,15 @@ class MonitorRuntime:
         with self.lock:
             device = self._ensure_device_unlocked(client_id)
             device["last_seen"] = time.time()
+            # actualizeaza statusul dispozitivului si capabilitatile sale in functie de mesajul primit, daca e topic de tip dispozitiv
 
             if category == "status":
                 status_value = message
 
                 try:
-                    payload = json.loads(message)
+                    payload = json.loads(message)   # transforma in obiect python 
 
+                    # verifica daca payload-ul este un dictionar, si daca are campul status, atunci actualizeaza status_value cu valoarea din payload
                     if isinstance(payload, dict):
                         status_value = payload.get("status", status_value)
                         capabilities = (
@@ -215,6 +225,9 @@ class MonitorRuntime:
 
                 if device["status"] != "offline":
                     device["status"] = "online"
+    # detectarea automata a dispozitivelor la nivel mqtt, cand backend primeste mesaj de pe un topic standard, extrage client id din topic
+    # creeaza dispozitivul in runtime daca nu exista deja, si actualizeaza statusul si capabilitatile sale in functie de mesajul primit
+    # deci detectez cand publica pe un topic de tip dispozitiv, si daca nu exista in runtime, il creez si ii setez statusul si capabilitatile
 
     def get_devices_copy(self) -> list[dict]:
         with self.lock:

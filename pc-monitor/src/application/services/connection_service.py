@@ -17,7 +17,7 @@ from src.infrastructure.repositories.connection_event_repository import (
     ConnectionEventRepository
 )
 
-
+# conectarea si deconectarea backend ului la brokerul mqtt 
 class ConnectionService:
     def __init__(
         self,
@@ -29,6 +29,8 @@ class ConnectionService:
         self.connection_event_repository = connection_event_repository
         self.on_message_callback = on_message_callback
 
+    # cand apas connect => se apeleaza aceasta metoda, care creeaza instanta clientului mqtt
+    # seteaza callback ul pentru mesajele primite, seteaza last will, username si parola, si incearca sa se conecteze la broker
     def connect(
         self,
         broker_address: str,
@@ -66,6 +68,8 @@ class ConnectionService:
         self.runtime.broker_port = broker_port
 
         try:
+            # creare client mqtt si callback pentru mesajele primite
+            # cand vine un mesaj mqtt, se apeleaza callback ul, care la randul lui apeleaza MessageService.handle_incoming_message
             self.runtime.client = MQTTClient(
                 client_id=client_id,
                 on_message_callback=self.on_message_callback
@@ -86,6 +90,7 @@ class ConnectionService:
 
             self.runtime.client.username_pw_set(username, password)
 
+            # deschidere conexiune tcp tls si trimitere pachet connect catre broker, daca nu reuseste, se arunca exceptie
             self.runtime.client.conectare_broker(
                 broker_address,
                 broker_port
@@ -93,6 +98,8 @@ class ConnectionService:
 
             self.runtime.connected = True
 
+            # auto-subscribe la topicurile standard pentru dispozitive
+            # daca nu reusesc sa ma abonez, afisez eroarea in consola, dar nu opresc conectarea
             for topic_filter, qos in DEFAULT_DEVICE_SUBSCRIPTIONS.items():
                 try:
                     self.runtime.client.subscribe(topic_filter, qos)
@@ -104,6 +111,7 @@ class ConnectionService:
                         f"Could not auto-subscribe to {topic_filter}: "
                         f"{subscribe_error}"
                     )
+            # abonare automata la licenta/+/status... , pentru a detecta automat dispozitivele care publica pe aceste topicuri
 
         except Exception as e:
             self.runtime.client = None

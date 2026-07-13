@@ -21,7 +21,7 @@ from src.infrastructure.repositories.mqtt_message_repository import (
     MQTTMessageRepository
 )
 
-
+# mesajele trimise de backedn catre broker, si mesajele de configurare a dispozitivelor
 class PublishingService:
     def __init__(
         self,
@@ -31,6 +31,7 @@ class PublishingService:
         self.runtime = runtime
         self.mqtt_message_repository = mqtt_message_repository
 
+    # verificare backend conectat la broker, topic valid, qos valid, publish la broker
     def publish_message(self, topic: str, message: str, qos: int):
         if not self.runtime.client or not self.runtime.connected:
             raise NotConnectedError("Client is not connected to broker.")
@@ -38,6 +39,7 @@ class PublishingService:
         validate_topic(topic)
         validate_qos(qos)
 
+        # trimitere mesaj la broker, cu topic, payload si qos
         self.runtime.client.publish(topic, message, qos)
 
         persist_safely(
@@ -46,10 +48,11 @@ class PublishingService:
             topic=topic,
             payload=message,
             qos=qos,
-            direction=MqttDirection.OUTBOUND.value,
+            direction=MqttDirection.OUTBOUND.value,     # din aplicatie catre broker
             source_client_id=self.runtime.client_id
         )
 
+    # configurare dispozitiv, se trimite mesaj la broker cu topicul de configurare al dispozitivului si payloadul cu parametrii de configurare
     def configure_device(
         self,
         client_id: str,
@@ -67,6 +70,7 @@ class PublishingService:
 
         topic = build_device_config_topic(client_id)
 
+        # converteste dictionarul in string json, separators inseamna ca nu pune spatii intre elemente, doar virgula si doua puncte
         message = json.dumps(
             {
                 "publish_qos": publish_qos,
